@@ -8,6 +8,7 @@ import argparse
 #import tf.contrib.eager as tfe
 #import tf.contrib.eager as tfe
 import tensorflow as tf
+import signal
 # tf.enable_eager_execution(config=tf.ConfigProto(log_device_placement=True))
 tf.enable_eager_execution()
 from tensorflow.contrib.eager.python import tfe
@@ -27,6 +28,10 @@ from lib.config import load_config, Struct
 from models_dynamic.PNPNet.pnp_net import PNPNet
 from trainers_dynamic.pnpnet_trainer import PNPNetTrainer
 from lib.weight_init import weights_init
+def handler(signal, frame):
+  pdb.set_trace()
+
+signal.signal(signal.SIGINT, handler)
 
 odictval2list = lambda x :  list(itertools.chain.from_iterable(list(x)))
 
