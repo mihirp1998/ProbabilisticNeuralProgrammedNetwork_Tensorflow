@@ -7,7 +7,7 @@ class BiKLD(object):
     def __call__(self, q, p):
         q_mu, q_var = q[0], tf.exp(q[1])
         p_mu, p_var = p[0], tf.exp(p[1])
-
+        # print(p_var,"pvar")
         kld = q_var / p_var - 1
         kld += tf.pow(p_mu - q_mu,2) / p_var
         kld += p[1] - q[1]

@@ -54,7 +54,7 @@ def main():
     # torch.backends.cudnn.benchmark = False
     # torch.backends.cudnn.deterministic = True
 
-    configs.exp_dir = 'results_bs8/' + configs.data_folder + '/' + configs.exp_dir_name
+    configs.exp_dir = 'results/' + configs.data_folder + '/' + configs.exp_dir_name
     exp_dir = configs.exp_dir
 
     try:
