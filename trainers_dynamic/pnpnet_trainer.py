@@ -79,11 +79,11 @@ class PNPNetTrainer:
             # st()
             if batch_idx % 30 == 0:
                 print(time.time()- t_start,"time taken")
-                scipy.misc.imsave(osp.join(self.configs.exp_dir, 'samples_temp', 'generativenmn_data_{}.png'.format(batch_idx)),
+                scipy.misc.imsave(osp.join(self.configs.exp_dir, 'samples', 'generativenmn_data_{}.png'.format(batch_idx)),
                                   (data[0] + 1) / 2.0)
-                scipy.misc.imsave(osp.join(self.configs.exp_dir, 'samples_temp', 'generativenmn_reconstruction_{}.png'.format(batch_idx)), \
+                scipy.misc.imsave(osp.join(self.configs.exp_dir, 'samples', 'generativenmn_reconstruction_{}.png'.format(batch_idx)), \
                                   (recon[0] + 1) / 2.0)
-                scipy.misc.imsave(osp.join(self.configs.exp_dir, 'samples_temp', 'generativenmn_reconstruction_clip_{}.png'.format(batch_idx)), \
+                scipy.misc.imsave(osp.join(self.configs.exp_dir, 'samples', 'generativenmn_reconstruction_clip_{}.png'.format(batch_idx)), \
                                   np.clip(recon[0], -1, 1))
                 print('Epoch:{0}\tIter:{1}/{2}\tRecon {3:.6f}\t KL {4:.6f}'.format(epoch_num, batch_idx,
                                                                                    len(self.train_loader) // self.configs.batch_size,
