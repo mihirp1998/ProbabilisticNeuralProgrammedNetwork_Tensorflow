@@ -58,7 +58,7 @@ class PNPNetTrainer:
                 rec_loss, kld_loss, pos_loss, modelout = self.model(data, trees, filenames, alpha=kl_coeff, ifmask=ifmask, maskweight=self.configs.maskweight)
                 # print("forward prop ",time.time()- f_time)
                 recon = modelout
-                rec_loss, kld_loss, pos_loss = tf.reduce_sum(rec_loss) / self._total(data), tf.reduce_sum(kld_loss) / self._total(data), tf.reduce_sum(pos_loss) / self._total(data)
+                rec_loss, kld_loss, pos_loss = tf.reduce_sum(rec_loss) , tf.reduce_sum(kld_loss) / self._total(data), tf.reduce_sum(pos_loss)
                 loss = rec_loss + self.configs.kl_beta * kld_loss + self.configs.pos_beta * pos_loss
             b_time = time.time()
             # st()

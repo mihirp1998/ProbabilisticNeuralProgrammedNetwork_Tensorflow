@@ -120,10 +120,10 @@ class PNPNet(object):
             self.pixelrecon_criterion = tf.losses.absolute_difference
         elif loss == 'l2':
             self.pixelrecon_criterion = tf.losses.mean_squared_error
-        self.pixelrecon_criterion.size_average = False
+        # self.pixelrecon_criterion.size_average = False
 
         self.pos_criterion = tf.losses.mean_squared_error
-        self.pos_criterion.size_average = False
+        # self.pos_criterion.size_average = False
 
         ## biases
         # self.bias_mean = nn.Linear(1, self.latentdim * self.lmap_size * self.lmap_size, bias=False)
