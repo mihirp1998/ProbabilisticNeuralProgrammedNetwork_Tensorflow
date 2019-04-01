@@ -13,7 +13,7 @@ import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.contrib.eager.python import tfe
 tf.set_random_seed(1)
-# tfe.seterr(inf_or_nan="raise")
+tfe.seterr(inf_or_nan="raise")
 from lib.utils import color_grid_vis, AverageMeter
 # from tf.keras import backend as K
 from keras import backend as K
