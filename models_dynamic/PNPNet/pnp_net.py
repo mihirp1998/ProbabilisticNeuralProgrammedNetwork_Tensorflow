@@ -28,8 +28,8 @@ from lib.modules.VAE import VAE
 from lib.modules.ResReader import Reader
 from lib.modules.ResWriter import Writer
 from lib.modules.ConceptMapper import ConceptMapper
-from lib.modules.Combine_nin import Combine
-from lib.modules.Describe_nin import Describe
+from lib.modules.Combine import Combine
+from lib.modules.Describe import Describe
 from lib.modules.Transform import Transform
 from lib.modules.DistributionRender import DistributionRender
 from lib.config import load_config, Struct
