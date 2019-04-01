@@ -51,16 +51,16 @@ class Combine(object):
     #                )
       # weight norm to be added
     if self.op == 'gPoE':
-      self.gates_v = tf.keras.Sequential([tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+      self.gates_v = keras.Sequential([keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
         InstanceNormalization(),
-        tf.keras.layers.Activation('sigmoid'),
-        tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+        keras.layers.Activation('sigmoid'),
+        keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
         InstanceNormalization()])
 
-      self.gates_p = tf.keras.Sequential([tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+      self.gates_p = keras.Sequential([keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
         InstanceNormalization(),
-        tf.keras.layers.Activation('elu'),
-        tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+        keras.layers.Activation('elu'),
+        keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
         InstanceNormalization()])
 
   def __call__(self, x1, x2, mode='vis'):
