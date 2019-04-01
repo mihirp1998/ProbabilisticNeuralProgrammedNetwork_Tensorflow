@@ -164,10 +164,11 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     #     {'params': model.bias_var.parameters()}
     # ], lr=configs.lr)
     ifmask = True
-    x = tf.random.uniform([1,64,64,3])
-    treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
-    trees = [treex]
-    rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
+    # st()
+    # x = tf.random.uniform([1,64,64,3])
+    # treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
+    # trees = [treex]
+    # rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
 
     load_epoch =0
     # saver = tfe.Saver(model.all_trainable_variables)
@@ -183,7 +184,7 @@ def train(model, train_loader, test_loader, gen_loader, configs):
         trainer.train_epoch(epoch_num, timestamp_start)
 
         if epoch_num % configs.save_interval == 0 and epoch_num > 0:
-            # saver = tfe.Saver(model.all_trainable_variables)
+            saver = tfe.Saver(model.all_trainable_variables)
             saver.save(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(epoch_num)))
             print("Model saved")
         # if epoch_num % configs.validate_interval == 0 and epoch_num > 0:
