@@ -168,6 +168,7 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     x = tf.random.uniform([1,64,64,3])
     treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
     trees = [treex]
+    st()
     rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
 
     load_epoch =0
