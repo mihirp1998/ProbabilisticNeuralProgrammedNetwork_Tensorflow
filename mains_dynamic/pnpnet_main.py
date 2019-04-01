@@ -171,7 +171,7 @@ def train(model, train_loader, test_loader, gen_loader, configs):
 
 
     saver = tfe.Saver(model.all_trainable_variables)
-    saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(3)))
+    saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(1)))
     print("Weights restored for ",len(model.all_trainable_variables))
 
     # model.cuda()
