@@ -169,10 +169,10 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     trees = [treex]
     rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
 
-    load_epoch =1
-    saver = tfe.Saver(model.all_trainable_variables)
-    saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
-    print("Weights restored for {} from epoch {}".format(len(model.all_trainable_variables),load_epoch))
+    load_epoch =0
+    # saver = tfe.Saver(model.all_trainable_variables)
+    # saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
+    # print("Weights restored for {} from epoch {}".format(len(model.all_trainable_variables),load_epoch))
 
     # model.cuda()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
