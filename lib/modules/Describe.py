@@ -1,7 +1,7 @@
 import tensorflow as tf
 tf.set_random_seed(1)
 from collections import OrderedDict
-
+from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 # one more advanced plan: predict an attention map a, then
 # render the vw by a*x*y + (1-a)*y
 class Describe(object):
@@ -104,48 +104,48 @@ class Describe(object):
         if op == 'CAT_gPoE':
             self.net1_mean_vis = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_v, 3, 1,padding="same"),
-                tf.contrib.layers.instance_norm(),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_v, 3, 1,padding="same"),
-                tf.contrib.layers.instance_norm()]
+                InstanceNormalization()]
             )
 
             self.net1_var_vis = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_v, 3, 1, "same"),
-                tf.contrib.layers.instance_norm(),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_v, 3, 1, "same"),
-                tf.contrib.layers.instance_norm()]
+                InstanceNormalization()]
             )
 
             self.net1_mean_pos = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                tf.contrib.layers.instance_norm(),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                tf.contrib.layers.instance_norm()]
+                InstanceNormalization()]
             )
 
             self.net1_var_pos = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                tf.contrib.layers.instance_norm(),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                tf.contrib.layers.instance_norm()]
+                InstanceNormalization()]
             )
             self.gates_v = tf.keras.Sequential(
                [tf.keras.layers.Conv2D(hiddim_v * 4, 3, 1, "same"),
-                tf.contrib.layers.instance_norm(),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_v * 4, 3, 1, "same"),
-                tf.contrib.layers.instance_norm()]
+                InstanceNormalization()]
             )
             self.gates_p = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_p * 4, 3, 1, "same"),
-                tf.contrib.layers.instance_norm(),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_p * 4, 3, 1, "same"),
-                tf.contrib.layers.instance_norm()]
+                InstanceNormalization()]
             )
     # Q: in gpoe why do we do different actions on mean and variance
 
