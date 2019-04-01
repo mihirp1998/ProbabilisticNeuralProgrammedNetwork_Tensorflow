@@ -55,8 +55,8 @@ class PNPNetTrainer:
 
             # self.=izer.zero_grad()
             ifmask = False
-            if self.configs.maskweight > 0:
-                ifmask = True
+            # if self.configs.maskweight > 0:
+            #     ifmask = True
             with tf.GradientTape() as tape:
                 f_time = time.time()
                 rec_loss, kld_loss, pos_loss, modelout = self.model(data, trees, filenames, alpha=kl_coeff, ifmask=ifmask, maskweight=self.configs.maskweight)
