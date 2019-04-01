@@ -278,6 +278,7 @@ class ResidualBlock(tf.keras.layers.Layer):
             if self.shortflag:
                 out = self.shortcut(x) + self.resblock(x)
             else:
+                st()
                 out = x + self.resblock(x)
         # else:
         #     if self.shortflag:
