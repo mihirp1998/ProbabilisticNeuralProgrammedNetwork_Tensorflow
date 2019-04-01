@@ -104,7 +104,7 @@ class Combine(object):
         mu1      = x1[0]
         mu2      = x2[0]
 
-        logvar   = -tf.log(tf.exp(mlogvar1) + tf.exp(mlogvar2))
+        logvar   = -tf.log(tf.exp(mlogvar1) + tf.exp(mlogvar2) + 1e-5)
         mu       = tf.exp(logvar)*(tf.exp(mlogvar1)*mu1 + tf.exp(mlogvar2)*mu2)
         return [mu, logvar]
     # elif self.op == 'ADD':

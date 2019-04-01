@@ -194,7 +194,7 @@ class Describe(object):
                     mu1 = x_mean
                     mu2 = y[0]
 
-                    y_var = -tf.log(tf.exp(mlogvar1) + tf.exp(mlogvar2))
+                    y_var = -tf.log(tf.exp(mlogvar1) + tf.exp(mlogvar2) + 1e-5)
                     y_mean = tf.exp(y_var) * (tf.exp(mlogvar1) * mu1 + tf.exp(mlogvar2) * mu2)
                 # elif self.op == 'CAT':
                 #     y_mean = self.net1_mean_vis(torch.cat([x[0], y[0]], dim=1))
