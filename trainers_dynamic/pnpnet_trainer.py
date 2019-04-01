@@ -13,7 +13,7 @@ import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.contrib.eager.python import tfe
 tf.set_random_seed(1)
-
+tfe.seterr(inf_or_nan="raise")
 from lib.utils import color_grid_vis, AverageMeter
 # from tf.keras import backend as K
 from keras import backend as K
@@ -46,8 +46,7 @@ class PNPNetTrainer:
             kl_coeff = self.configs.alpha_ub
         print('kl penalty coefficient: ', kl_coeff, 'alpha upperbound:', self.configs.alpha_ub)
         t_start = time.time()
-        if epoch_num == 1:
-            tfe.seterr(inf_or_nan="raise")
+        # if epoch_num == 1:
 
         while epoch_end is False:
             data, trees, _, epoch_end,filenames = self.train_loader.next_batch()
@@ -55,8 +54,8 @@ class PNPNetTrainer:
 
             # self.=izer.zero_grad()
             ifmask = False
-            # if self.configs.maskweight > 0:
-            #     ifmask = True
+            if self.configs.maskweight > 0:
+                ifmask = True
             with tf.GradientTape() as tape:
                 f_time = time.time()
                 rec_loss, kld_loss, pos_loss, modelout = self.model(data, trees, filenames, alpha=kl_coeff, ifmask=ifmask, maskweight=self.configs.maskweight)
