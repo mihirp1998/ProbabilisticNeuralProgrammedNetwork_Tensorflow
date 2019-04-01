@@ -1,7 +1,7 @@
 import tensorflow as tf
 from collections import OrderedDict
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
-import keras
+import kerkernel_size=asstrides=
 tf.set_random_seed(1)
 
 class Combine(object):
@@ -51,16 +51,16 @@ class Combine(object):
     #                )
       # weight norm to be added
     if self.op == 'gPoE':
-      self.gates_v = keras.Sequential([keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+      self.gates_v = keras.Sequential([keras.layers.Conv2D(hiddim_v*4,kernel_size=3,strides=1,padding="same"),
         InstanceNormalization(),
         keras.layers.Activation('sigmoid'),
-        keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+        keras.layers.Conv2D(hiddim_v*4,kernel_size=3,strides=1,padding="same"),
         InstanceNormalization()])
 
-      self.gates_p = keras.Sequential([keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+      self.gates_p = keras.Sequential([keras.layers.Conv2D(hiddim_v*4,kernel_size=3,strides=1,padding="same"),
         InstanceNormalization(),
         keras.layers.Activation('elu'),
-        keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
+        keras.layers.Conv2D(hiddim_v*4,kernel_size=3,strides=1,padding="same"),
         InstanceNormalization()])
 
   def __call__(self, x1, x2, mode='vis'):

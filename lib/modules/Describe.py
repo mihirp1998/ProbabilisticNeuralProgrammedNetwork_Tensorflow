@@ -104,48 +104,48 @@ class Describe(object):
         #     )
         if op == 'CAT_gPoE':
             self.net1_mean_vis = keras.Sequential(
-                [keras.layers.Conv2D(hiddim_v, 3, 1,padding="same"),
+                [keras.layers.Conv2D(hiddim_v, kernel_size=3, strides=1,padding="same"),
                 InstanceNormalization(),
                 keras.layers.Activation('elu'),
-                keras.layers.Conv2D(hiddim_v, 3, 1,padding="same"),
+                keras.layers.Conv2D(hiddim_v, kernel_size=3, strides=1,padding="same"),
                 InstanceNormalization()]
             )
 
             self.net1_var_vis = keras.Sequential(
-                [keras.layers.Conv2D(hiddim_v, 3, 1, "same"),
+                [keras.layers.Conv2D(hiddim_v,kernel_size= 3,strides= 1, "same"),
                 InstanceNormalization(),
                 keras.layers.Activation('elu'),
-                keras.layers.Conv2D(hiddim_v, 3, 1, "same"),
+                keras.layers.Conv2D(hiddim_v, kernel_size=3, strides=1, "same"),
                 InstanceNormalization()]
             )
 
             self.net1_mean_pos = keras.Sequential(
-                [keras.layers.Conv2D(hiddim_p, 1,1, "same"),
+                [keras.layers.Conv2D(hiddim_p,kernel_size= 1,strides=1, "same"),
                 InstanceNormalization(),
                 keras.layers.Activation('elu'),
-                keras.layers.Conv2D(hiddim_p, 1,1, "same"),
+                keras.layers.Conv2D(hiddim_p,kernel_size= 1,strides=1, "same"),
                 InstanceNormalization()]
             )
 
             self.net1_var_pos = keras.Sequential(
-                [keras.layers.Conv2D(hiddim_p, 1,1, "same"),
+                [keras.layers.Conv2D(hiddim_p,kernel_size= 1,strides=1, "same"),
                 InstanceNormalization(),
                 keras.layers.Activation('elu'),
-                keras.layers.Conv2D(hiddim_p, 1,1, "same"),
+                keras.layers.Conv2D(hiddim_p,kernel_size= 1,strides=1, "same"),
                 InstanceNormalization()]
             )
             self.gates_v = keras.Sequential(
-               [keras.layers.Conv2D(hiddim_v * 4, 3, 1, "same"),
+               [keras.layers.Conv2D(hiddim_v * 4, kernel_size=3, strides=1, "same"),
                 InstanceNormalization(),
                 keras.layers.Activation('elu'),
-                keras.layers.Conv2D(hiddim_v * 4, 3, 1, "same"),
+                keras.layers.Conv2D(hiddim_v * 4, kernel_size=3, strides=1, "same"),
                 InstanceNormalization()]
             )
             self.gates_p = keras.Sequential(
-                [keras.layers.Conv2D(hiddim_p * 4, 3, 1, "same"),
+                [keras.layers.Conv2D(hiddim_p * 4,kernel_size= 3,strides= 1, "same"),
                 InstanceNormalization(),
                 keras.layers.Activation('elu'),
-                keras.layers.Conv2D(hiddim_p * 4, 3, 1, "same"),
+                keras.layers.Conv2D(hiddim_p * 4, kernel_size=3, strides=1, "same"),
                 InstanceNormalization()]
             )
     # Q: in gpoe why do we do different actions on mean and variance
