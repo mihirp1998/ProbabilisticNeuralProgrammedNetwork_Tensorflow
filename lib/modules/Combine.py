@@ -1,7 +1,7 @@
 import tensorflow as tf
 from collections import OrderedDict
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
-
+import keras
 tf.set_random_seed(1)
 
 class Combine(object):
