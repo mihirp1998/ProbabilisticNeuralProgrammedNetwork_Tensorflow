@@ -166,17 +166,17 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     #     {'params': model.bias_var.parameters()}
     # ], lr=configs.lr)
     ifmask = True
+    st()
+    x = tf.random.uniform([1,64,64,3])
+    treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
+    trees = [treex]
     # st()
-    # x = tf.random.uniform([1,64,64,3])
-    # treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
-    # trees = [treex]
-    # st()
-    # rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
+    rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
 
-    load_epoch =0
-    # saver = tfe.Saver(model.all_trainable_variables)
-    # saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
-    # print("Weights restored for {} from epoch {}".format(len(model.all_trainable_variables),load_epoch))
+    load_epoch =10
+    saver = tfe.Saver(model.all_trainable_variables)
+    saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
+    print("Weights restored for {} from epoch {}".format(len(model.all_trainable_variables),load_epoch))
 
     # model.cuda()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
