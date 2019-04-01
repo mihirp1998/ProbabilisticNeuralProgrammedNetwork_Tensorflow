@@ -19,7 +19,7 @@ combine_op: gPoE
 describe_op: CAT_gPoE
 maskweight: 2.0
 bg_bias: False
-normalize: batch_norm
+normalize: gate
 loss: l1
 # Training
 batch_size: 16
