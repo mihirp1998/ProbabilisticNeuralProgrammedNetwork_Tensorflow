@@ -22,7 +22,7 @@ bg_bias: False
 normalize: batch_norm
 loss: l1
 # Training
-batch_size: 2
+batch_size: 16
 epochs: 500
 gpu_id: 0
 log_interval: 10
