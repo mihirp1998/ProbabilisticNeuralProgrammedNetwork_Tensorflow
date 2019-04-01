@@ -11,7 +11,7 @@ import time
 from tensorflow.contrib.eager.python import tfe
 import tensorflow as tf
 from tensorflow.python.eager import context
-
+from tensorflow.contrib.eager.python import tfe
 tf.set_random_seed(1)
 
 from lib.utils import color_grid_vis, AverageMeter
@@ -46,6 +46,9 @@ class PNPNetTrainer:
             kl_coeff = self.configs.alpha_ub
         print('kl penalty coefficient: ', kl_coeff, 'alpha upperbound:', self.configs.alpha_ub)
         t_start = time.time()
+        if epoch_num == 1:
+            tfe.seterr(inf_or_nan="raise")
+
         while epoch_end is False:
             data, trees, _, epoch_end,filenames = self.train_loader.next_batch()
             # data = Variable(data).cuda()

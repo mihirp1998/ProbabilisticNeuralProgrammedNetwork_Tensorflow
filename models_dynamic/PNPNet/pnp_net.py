@@ -42,8 +42,7 @@ import ipdb
 st = ipdb.set_trace
 import itertools
 import keras
-from tensorflow.contrib.eager.python import tfe
-tfe.seterr(inf_or_nan="raise")
+
 odictval2list = lambda x :  list(itertools.chain.from_iterable(list(x)))
 
 class PNPNet(object):
