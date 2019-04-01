@@ -9,6 +9,8 @@ import argparse
 #import tf.contrib.eager as tfe
 import tensorflow as tf
 import signal
+import ipdb
+st = ipdb.set_trace
 # tf.enable_eager_execution(config=tf.ConfigProto(log_device_placement=True))
 tf.enable_eager_execution()
 from tensorflow.contrib.eager.python import tfe
