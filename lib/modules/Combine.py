@@ -58,7 +58,7 @@ class Combine(object):
       self.gates_p = tf.keras.Sequential([tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
         tf.contrib.layers.instance_norm(),
         tf.keras.layers.Activation('elu'),
-        tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same")
+        tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
         tf.contrib.layers.instance_norm()])
 
   def __call__(self, x1, x2, mode='vis'):
