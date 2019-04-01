@@ -169,16 +169,16 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     trees = [treex]
     rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
 
-
+    load_epoch =1
     saver = tfe.Saver(model.all_trainable_variables)
-    saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(1)))
+    saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
     print("Weights restored for ",len(model.all_trainable_variables))
 
     # model.cuda()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
 
     minloss = 1000
-    for epoch_num in range(3, configs.epochs + 1):
+    for epoch_num in range(load_epoch, configs.epochs + 1):
         timestamp_start = datetime.datetime.now(pytz.timezone('America/New_York'))
         trainer.train_epoch(epoch_num, timestamp_start)
 
