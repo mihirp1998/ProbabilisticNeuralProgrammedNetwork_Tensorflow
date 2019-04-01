@@ -163,17 +163,27 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     #     {'params': model.bias_mean.parameters()},
     #     {'params': model.bias_var.parameters()}
     # ], lr=configs.lr)
+    ifmask = True
+    x = tf.random.uniform([1,64,64,3])
+    treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
+    trees = [treex]
+    rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
+
+
+    saver = tfe.Saver(model.all_trainable_variables)
+    saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(3)))
+    print("Weights restored for ",len(model.all_trainable_variables))
 
     # model.cuda()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
 
     minloss = 1000
-    for epoch_num in range(0, configs.epochs + 1):
+    for epoch_num in range(3, configs.epochs + 1):
         timestamp_start = datetime.datetime.now(pytz.timezone('America/New_York'))
         trainer.train_epoch(epoch_num, timestamp_start)
 
         if epoch_num % configs.save_interval == 0 and epoch_num > 0:
-            saver = tfe.Saver(model.all_trainable_variables)
+            # saver = tfe.Saver(model.all_trainable_variables)
             saver.save(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(epoch_num)))
             print("Model saved")
         # if epoch_num % configs.validate_interval == 0 and epoch_num > 0:

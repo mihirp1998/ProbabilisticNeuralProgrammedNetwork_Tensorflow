@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 class BiKLD(object):
     def __init__(self):
         super(BiKLD, self).__init__()
@@ -15,5 +15,8 @@ class BiKLD(object):
         return kld
 
 if __name__ == "__main__":
+    tf.enable_eager_execution()
     bkld = BiKLD()
-    print(bkld(tf.zeros((2,4)),tf.zeros((2,4))))
+    np.random.seed(1)
+    a,b = (np.random.randn(2,4),np.random.randn(2,4))
+    print(bkld(a,b))

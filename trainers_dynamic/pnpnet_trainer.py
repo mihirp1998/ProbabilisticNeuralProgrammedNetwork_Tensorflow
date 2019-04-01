@@ -34,6 +34,7 @@ class PNPNetTrainer:
 
     def train_epoch(self, epoch_num, timestamp_start):
         # self.model.train()
+        st()
         train_rec_loss = AverageMeter()
         train_kld_loss = AverageMeter()
         train_pos_loss = AverageMeter()
