@@ -191,10 +191,10 @@ class ResidualBlock(tf.keras.layers.Layer):
         elif normalize == 'batch_norm':
             self.resblock = tf.keras.Sequential(
                 [self.conv('sconv', indim, outdim),
-                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.BatchNormalization(renorm=True),
                 tf.keras.layers.Activation(self.act_name),
                 self.conv(convtype, outdim, outdim),
-                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.BatchNormalization(renorm=True),
                 tf.keras.layers.Activation(self.act_name)])
             # self.act = self.nonlinear(nonlinear)
         # elif normalize == 'batch_norm':
