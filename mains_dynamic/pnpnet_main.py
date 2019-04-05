@@ -12,8 +12,8 @@ import signal
 import ipdb
 st = ipdb.set_trace
 # tf.enable_eager_execution(config=tf.ConfigProto(log_device_placement=True))
-tf.enable_eager_execution()
-from tensorflow.contrib.eager.python import tfe
+# tf.enable_eager_execution()
+# from tensorflow.contrib.eager.python import tfe
 import pickle
 import pytz
 import scipy.misc
@@ -22,7 +22,7 @@ import os
 import numpy as np
 import random
 import pdb
-from adam import AdamOptimizer
+from adam import Adam
 
 from lib.data_loader.color_mnist_tree_multi import COLORMNISTTREE
 from lib.data_loader.clevr.clevr_tree import CLEVRTREE
@@ -37,7 +37,7 @@ signal.signal(signal.SIGINT, handler)
 
 odictval2list = lambda x :  list(itertools.chain.from_iterable(list(x)))
 
-tf.set_random_seed(1)
+# tf.set_random_seed(1)
 parser = argparse.ArgumentParser(description='PNPNet - main model experiment')
 parser.add_argument('--config_path', type=str, default='./configs/pnp_net_configs.yaml', metavar='C',
                     help='path to the configuration file')
@@ -148,7 +148,7 @@ def main():
 
 def train(model, train_loader, test_loader, gen_loader, configs):
     # model.train()
-    optimizer = AdamOptimizer(configs.lr)
+    optimizer = Adam(configs.lr,amsgrad=True)
     # # optimizer, it's better to set up lr for some modules separately so that the whole training become more stable
     # optimizer = optim.Adamax([
     #     {'params': model.reader.parameters(), 'lr': 0.2 * configs.lr},
@@ -179,6 +179,7 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     # print("Weights restored for {} from epoch {}".format(len(model.all_trainable_variables),load_epoch))
 
     # model.cuda()
+    # st()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
 
     minloss = 1000
@@ -187,8 +188,7 @@ def train(model, train_loader, test_loader, gen_loader, configs):
         trainer.train_epoch(epoch_num, timestamp_start)
 
         if epoch_num % configs.save_interval == 0 and epoch_num > 0:
-            saver = tfe.Saver(model.all_trainable_variables)
-            saver.save(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(epoch_num)))
+            model.save_weights(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(epoch_num)))
             print("Model saved")
         # if epoch_num % configs.validate_interval == 0 and epoch_num > 0:
         #     minloss = trainer.validate(epoch_num, timestamp_start, minloss)

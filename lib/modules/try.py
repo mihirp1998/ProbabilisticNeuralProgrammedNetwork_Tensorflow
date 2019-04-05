@@ -158,7 +158,7 @@ def affine_grid_generator(height, width, theta):
 	sampling_grid = tf.stack([x_t_flat, y_t_flat, ones])
 
 	# repeat grid num_batch times
-	sampling_grid = tf.expand_dims(sampling_grid, axis=0)
+	sampling_grid = tf.math.expand_dims(sampling_grid, axis=0)
 	sampling_grid = tf.tile(sampling_grid, tf.stack([num_batch, 1, 1]))
 
 	# cast to float32 (required for matmul)
@@ -233,10 +233,10 @@ def bilinear_sampler(img, x, y):
 	wd = (x-x0) * (y-y0)
 
 	# add dimension for addition
-	wa = tf.expand_dims(wa, axis=3)
-	wb = tf.expand_dims(wb, axis=3)
-	wc = tf.expand_dims(wc, axis=3)
-	wd = tf.expand_dims(wd, axis=3)
+	wa = tf.math.expand_dims(wa, axis=3)
+	wb = tf.math.expand_dims(wb, axis=3)
+	wc = tf.math.expand_dims(wc, axis=3)
+	wd = tf.math.expand_dims(wd, axis=3)
 
 	Ia = tf.cast(Ia, 'float32')
 	Ib = tf.cast(Ib, 'float32')

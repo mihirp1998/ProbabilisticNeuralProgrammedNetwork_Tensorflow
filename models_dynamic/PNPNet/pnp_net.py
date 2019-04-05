@@ -17,7 +17,7 @@
   -- utility functions: clean_tree(), etc.
 '''
 import _init_paths
-import tensorflow.contrib.eager as tfe
+# import tensorflow.contrib.eager as tfe
 import pickle
 import numpy as np
 import math
@@ -28,15 +28,16 @@ from lib.modules.VAE import VAE
 from lib.modules.ResReader import Reader
 from lib.modules.ResWriter import Writer
 from lib.modules.ConceptMapper import ConceptMapper
-from lib.modules.Combine import Combine
-from lib.modules.Describe import Describe
+from lib.modules.Combine import Combine_Vis,Combine_Pos
+from lib.modules.Describe import Describe_Vis,Describe_Pos
 from lib.modules.Transform import Transform
+from lib.modules.latent_gen import h_mean,h_var
 from lib.modules.DistributionRender import DistributionRender
 from lib.config import load_config, Struct
 import os.path as osp
 import sys
 import tensorflow as tf
-tf.set_random_seed(1)
+# tf.set_random_seed(1)
 import numpy as np
 import ipdb
 st = ipdb.set_trace
@@ -45,7 +46,7 @@ import keras
 
 odictval2list = lambda x :  list(itertools.chain.from_iterable(list(x)))
 
-class PNPNet(object):
+class PNPNet(tf.keras.Model):
     def __init__(self, hiddim=160, latentdim=12,
                  word_size=[-1, 16, 16], pos_size=[4, 1, 1], nres=4, nlayers=1,
                  nonlinear='elu', dictionary=None, op=['PROD', 'CAT'],
@@ -55,7 +56,7 @@ class PNPNet(object):
         super(PNPNet, self).__init__()
         ## basic settings
         word_size[0] = latentdim
-        self.trainable_variables = OrderedDict()
+        # self.trainable_variables = OrderedDict()
         self.word_size = word_size
         self.latentdim = latentdim
         self.hiddim = hiddim
@@ -76,36 +77,40 @@ class PNPNet(object):
 
         ########## modules ##########
         # proposal networks
-        self.reader = Reader(name="reader",indim=3, hiddim=hiddim, outdim=hiddim, ds_times=self.downsample, normalize=normalize,
+        self.reader = Reader(indim=3, hiddim=hiddim, outdim=hiddim, ds_times=self.downsample, normalize=normalize,
                              nlayers=nlayers)
         # tf.keras.layers.Conv2D(outdim,3,1,padding="same")
         # self.h_mean = nn.Conv2d(hiddim, latentdim, 3, 1, 1)
-        self.h_mean = tf.keras.layers.Conv2D(latentdim,3,1,padding="same",name="h_mean")
+        self.h_mean = h_mean(latentdim)
         # self.h_var = nn.Conv2d(hiddim, latentdim, 3, 1, 1)
-        self.h_var = tf.keras.layers.Conv2D(latentdim,3,1,padding="same",name="h_var")
+        self.h_var = h_var(latentdim)
 
         # pixel writer
 
         # visual words
         # print(word_size,"word size")
-        self.vis_dist = ConceptMapper("concept_vis_dist",word_size)
-        self.pos_dist = ConceptMapper("concept_pos_dist",pos_size)
+        self.vis_dist = ConceptMapper(word_size)
+        self.pos_dist = ConceptMapper(pos_size)
 
 
         # neural modules
-        self.combine = Combine(name="combine",hiddim_v=latentdim, hiddim_p=pos_size[0], op=op[0])
-        self.describe = Describe(name="describe",hiddim_v=latentdim, hiddim_p=pos_size[0], op=op[1])
-        self.transform = Transform(name="transform",matrix='default')
+        self.combine_vis = Combine_Vis(hiddim_v=latentdim, op=op[0])
+        self.combine_pos = Combine_Pos(hiddim_p=pos_size[0], op=op[0])
+
+        self.describe_vis = Describe_Vis(hiddim_v=latentdim, op=op[1])
+        self.describe_pos = Describe_Pos(hiddim_p=pos_size[0], op=op[1])
+
+        self.transform = Transform(matrix='default')
 
         # small vaes for bounding boxes and offsets learning
         # input: H, W
-        self.box_vae = VAE(name="box_vae",indim=2, latentdim=pos_size[0])
-        self.offset_vae = VAE(name="offset_vae",indim=4, latentdim=pos_size[0])
+        self.box_vae = VAE("box_vae",indim=2, latentdim=pos_size[0])
+        self.offset_vae = VAE("offset_vae",indim=4, latentdim=pos_size[0])
         
-        self.renderer = DistributionRender(name="DistributionRender",hiddim=latentdim)
+        self.renderer = DistributionRender(hiddim=latentdim)
         # input: [x0, y0, x1, y1] + condition: [H0, W0, H1, W1, im_H, im_W, (im_H-H0), (im_W-W0), (im_H-H1), (im_W-W1)]
 
-        self.writer = Writer(name ="writer",indim=latentdim, hiddim=hiddim, outdim=3, ds_times=self.downsample, normalize=normalize,
+        self.writer = Writer(indim=latentdim, hiddim=hiddim, outdim=3, ds_times=self.downsample, normalize=normalize,
                              nlayers=nlayers)
         ## loss functions&sampler
         self.sampler = reparameterize()
@@ -117,12 +122,12 @@ class PNPNet(object):
             self.bikld = BiKLD()
 
         if loss == 'l1':
-            self.pixelrecon_criterion = tf.losses.absolute_difference
+            self.pixelrecon_criterion = tf.losses.MeanAbsoluteError()
         elif loss == 'l2':
-            self.pixelrecon_criterion = tf.losses.mean_squared_error
+            self.pixelrecon_criterion = tf.losses.MeanSquaredError()
         # self.pixelrecon_criterion.size_average = False
 
-        self.pos_criterion = tf.losses.mean_squared_error
+        self.pos_criterion = tf.losses.MeanSquaredError()
         # self.pos_criterion.size_average = False
 
         ## biases
@@ -133,7 +138,7 @@ class PNPNet(object):
     def get_mask_from_tree(self, tree, size):
         mask = np.zeros(size,np.float32)
         return self._get_mask_from_tree(tree, mask)
-# shhould give an error
+
     def _get_mask_from_tree(self, tree, mask):
         for i in range(0, tree.num_children):
             mask = self._get_mask_from_tree(tree.children[i], mask)
@@ -150,8 +155,17 @@ class PNPNet(object):
     
     def passLeave(self):
         pass
+    def get_masks(self,treex,x):
+        mask = []
+        for i in range(0, len(treex)):
+            mask += [self.get_mask_from_tree(treex[i],[1]+x.get_shape().as_list()[1:])]
+        mask = np.concatenate(mask, 0)
+        mask = tf.convert_to_tensor(mask)
+        return mask
 
-    def __call__(self,x, treex,filenames, treeindex=None, alpha=1.0, ifmask=False, maskweight=1.0):
+
+
+    def call(self,x, treex,filenames, treeindex=None, alpha=1.0, ifmask=False, maskweight=1.0):
         ################################
         ##    input: images, trees    ##
         ################################
@@ -166,25 +180,20 @@ class PNPNet(object):
             treex = treex_pick
 
         if ifmask == True:
-            mask = []
-            for i in range(0, len(treex)):
-                mask += [self.get_mask_from_tree(treex[i],[1]+x.get_shape().as_list()[1:])]
-            mask = np.concatenate(mask, 0)
-            mask = tf.convert_to_tensor(mask)
-
+            mask = self.get_masks(treex,x)
         
         # encoding the images
         h = self.reader(x)
-        if "reader" not in self.trainable_variables:
-            self.trainable_variables["reader"] =  list(itertools.chain.from_iterable(list(self.reader.trainable_variables.values())))
-        # proposal distribution
+        # if "reader" not in self.trainable_variables:
+        #     self.trainable_variables["reader"] =  list(itertools.chain.from_iterable(list(self.reader.trainable_variables.values())))
+        # # proposal distribution
         latent_mean = self.h_mean(h)
-        if "latent_mean" not in self.trainable_variables:
-            self.trainable_variables["latent_mean"] =  self.h_mean.trainable_variables
+        # if "latent_mean" not in self.trainable_variables:
+        #     self.trainable_variables["latent_mean"] =  self.h_mean.trainable_variables
 
         latent_var = self.h_var(h)
-        if "latent_var" not in self.trainable_variables:
-            self.trainable_variables["latent_var"] =   self.h_var.trainable_variables
+        # if "latent_var" not in self.trainable_variables:
+        #     self.trainable_variables["latent_var"] =   self.h_var.trainable_variables
 
         # losses
         kld_loss, rec_loss, pos_loss = 0, 0, 0
@@ -198,23 +207,23 @@ class PNPNet(object):
             prior_var_all += [trees[i].vis_dist[1]]
             pos_loss += trees[i].pos_loss
             # tf.cond(tf.debugging.is_nan(pos_loss),lambda:self.nanFound(),lambda:self.passLeave())
-        if "vis_dist" not in self.trainable_variables:
-            self.trainable_variables["vis_dist"] = odictval2list(self.vis_dist.trainable_variables.values())
+        # if "vis_dist" not in self.trainable_variables:
+        #     self.trainable_variables["vis_dist"] = odictval2list(self.vis_dist.trainable_variables.values())
 
-        if "pos_dist" not in self.trainable_variables:
-            self.trainable_variables["pos_dist"] = odictval2list(self.pos_dist.trainable_variables.values())
+        # if "pos_dist" not in self.trainable_variables:
+        #     self.trainable_variables["pos_dist"] = odictval2list(self.pos_dist.trainable_variables.values())
 
-        if "combine" not in self.trainable_variables:
-            self.trainable_variables["combine"] = odictval2list(self.combine.trainable_variables.values())
+        # if "combine" not in self.trainable_variables:
+        #     self.trainable_variables["combine"] = odictval2list(self.combine.trainable_variables.values())
 
-        if "describe" not in self.trainable_variables:
-            self.trainable_variables["describe"] = odictval2list(self.describe.trainable_variables.values())
+        # if "describe" not in self.trainable_variables:
+        #     self.trainable_variables["describe"] = odictval2list(self.describe.trainable_variables.values())
 
-        if "box_vae" not in self.trainable_variables:
-            self.trainable_variables["box_vae"] = odictval2list(self.box_vae.trainable_variables.values())
+        # if "box_vae" not in self.trainable_variables:
+        #     self.trainable_variables["box_vae"] = odictval2list(self.box_vae.trainable_variables.values())
 
-        if "offset_vae" not in self.trainable_variables:
-            self.trainable_variables["offset_vae"] = odictval2list(self.offset_vae.trainable_variables.values())
+        # if "offset_vae" not in self.trainable_variables:
+        #     self.trainable_variables["offset_vae"] = odictval2list(self.offset_vae.trainable_variables.values())
 
         # self.trainable_variables =  self.trainable_variables + self.vis_dist.trainable_variables + self.pos_dist.trainable_variables + self.combine.trainable_variables + self.describe.trainable_variables +self.box_vae.trainable_variables  + self.offset_vae.trainable_variables
         # st()
@@ -225,8 +234,8 @@ class PNPNet(object):
 
         prior_mean, prior_var = self.renderer([prior_mean, prior_var])
 
-        if "renderer" not in self.trainable_variables:
-            self.trainable_variables["renderer"] = odictval2list(self.renderer.trainable_variables.values())
+        # if "renderer" not in self.trainable_variables:
+        #     self.trainable_variables["renderer"] = odictval2list(self.renderer.trainable_variables.values())
         # sample z map
         z_map = self.sampler(latent_mean, latent_var,self.batch_size)
 
@@ -238,17 +247,16 @@ class PNPNet(object):
         rec = self.writer(z_map)
 
 
-        if "writer" not in self.trainable_variables:
-            self.trainable_variables["writer"] = odictval2list(self.writer.trainable_variables.values())
+        # if "writer" not in self.trainable_variables:
+        #     self.trainable_variables["writer"] = odictval2list(self.writer.trainable_variables.values())
 
         if ifmask is True:
             mask = (mask + maskweight) / (maskweight + 1.0)
-            # st()
             rec_loss = self.pixelrecon_criterion(mask * rec, mask * x)
         else:
             rec_loss = self.pixelrecon_criterion(rec, x)
 
-        self.all_trainable_variables = odictval2list(self.trainable_variables.values())
+        # self.all_trainable_variables = odictval2list(self.trainable_variables.values())
         # print(rec_loss,"rec loss")
         # rec_loss = rec_loss.sum()
         self.rec_loss = rec_loss
@@ -293,10 +301,10 @@ class PNPNet(object):
             if treex.num_children > 0:
                 # visual content
                 vis_dist_child = treex.children[0].vis_dist
-                vis_dist = self.combine(vis_dist, vis_dist_child, 'vis')
+                vis_dist = self.combine_vis(vis_dist, vis_dist_child)
                 # visual position
                 pos_dist_child = treex.children[0].pos_dist
-                pos_dist = self.combine(pos_dist, pos_dist_child, 'pos')
+                pos_dist = self.combine_pos(pos_dist, pos_dist_child)
 
             treex.vis_dist = vis_dist
             treex.pos_dist = pos_dist
@@ -308,10 +316,10 @@ class PNPNet(object):
             if treex.num_children > 0:
                 # visual content
                 vis_dist_child = treex.children[0].vis_dist
-                vis_dist = self.describe(vis_dist_child, vis_dist, 'vis')
+                vis_dist = self.describe_vis(vis_dist_child, vis_dist)
                 # visual position
                 pos_dist_child = treex.children[0].pos_dist
-                pos_dist = self.describe(pos_dist_child, pos_dist, 'pos')
+                pos_dist = self.describe_pos(pos_dist_child, pos_dist)
             treex.pos_dist = pos_dist
 
             # regress bbox
@@ -331,17 +339,18 @@ class PNPNet(object):
                 #                    self.bias_var(ones).view(*latent_canvas_size)]
                 b = np.maximum(treex.bbox // self.ds, [0, 0, 1, 1])
 
-                bg_vis_dist = [self.assign_util(latent_canvas_size, b, self.transform(vis_dist[0], treex.pos),
+                bg_vis_dist = [self.assign_util(latent_canvas_size, b, self.transform(vis_dist[0], tf.convert_to_tensor(treex.pos,tf.int32)),
                                                 'assign'), \
                                self.assign_util(latent_canvas_size, b,
-                                                self.transform(vis_dist[1], treex.pos, variance=True),
+                                                self.transform(vis_dist[1], tf.convert_to_tensor(treex.pos,tf.int32), variance=True),
                                                 'assign')]
                 vis_dist = bg_vis_dist
             else:
                 try:
                     # resize vis_dist
-                    vis_dist = [self.transform(vis_dist[0], treex.pos), \
-                                self.transform(vis_dist[1], treex.pos, variance=True)]
+                    # st()
+                    vis_dist = [self.transform(vis_dist[0], tf.convert_to_tensor(treex.pos,tf.int32)), \
+                                self.transform(vis_dist[1],tf.convert_to_tensor(treex.pos,tf.int32), variance=True)]
                 except:
                     import IPython;
                     IPython.embed()
@@ -370,8 +379,7 @@ class PNPNet(object):
             ones = self.get_ones([1, 1])
             # if not self.bg_bias:
             # st()
-            vis_dist_variable = [tfe.Variable(tf.zeros(latent_canvas_size),trainable=False), \
-                        tfe.Variable(tf.zeros(latent_canvas_size),trainable=False)]
+            vis_dist_variable = [tf.zeros(latent_canvas_size),tf.zeros(latent_canvas_size)]
             # else:
             #     vis_dist = [self.bias_mean(ones).view(*latent_canvas_size), \
             #                 self.bias_var(ones).view(*latent_canvas_size)]
@@ -436,7 +444,7 @@ class PNPNet(object):
             # st()
             indices = self.gen_indices(bx[0],bx[1],bx[2],bx[3])
             # st()
-            a= tf.scatter_nd_update(canvas,indices,b)
+            a= tf.tensor_scatter_nd_update(canvas,indices,b)
             # a[:,bx[0]:bx[0] + bx[2], bx[1]:bx[1] + bx[3],:].assign(b)
         # elif mode == 'add':
         #     a[:, :, bx[0]:bx[0] + bx[2], bx[1]:bx[1] + bx[3]] = \
@@ -460,33 +468,33 @@ class PNPNet(object):
     #     else:
     #         return []
 
-    # def generate(self, x, treex, treeindex=None):
-    #     ################################
-    #     ##    input: images, trees    ##
-    #     ################################
-    #     if self.multigpu_full:
-    #         treex_pick = [treex[ele[0]] for ele in treeindex.data.cpu().numpy().astype(int)]
-    #         treex = treex_pick
+    def generate(self, x, treex, treeindex=None):
+        ################################
+        ##    input: images, trees    ##
+        ################################
+        if self.multigpu_full:
+            treex_pick = [treex[ele[0]] for ele in treeindex.data.cpu().numpy().astype(int)]
+            treex = treex_pick
 
-    #     # tranverse trees to compose visual words
-    #     prior_mean = []
-    #     prior_var = []
+        # tranverse trees to compose visual words
+        prior_mean = []
+        prior_var = []
 
-    #     for i in range(0, len(treex)):
-    #         treex[i] = self.generate_compose_tree(treex[i], self.latent_canvas_size)
-    #         prior_mean += [treex[i].vis_dist[0]]
-    #         prior_var += [treex[i].vis_dist[1]]
-    #     prior_mean = torch.cat(prior_mean, dim=0)
-    #     prior_var = torch.cat(prior_var, dim=0)
+        for i in range(0, len(treex)):
+            treex[i] = self.generate_compose_tree(treex[i], self.latent_canvas_size)
+            prior_mean += [treex[i].vis_dist[0]]
+            prior_var += [treex[i].vis_dist[1]]
+        prior_mean = tf.concat(prior_mean, dim=0)
+        prior_var = tf.concat(prior_var, dim=0)
 
-    #     # sample z map
-    #     prior_mean, prior_var = self.renderer([prior_mean, prior_var])
+        # sample z map
+        prior_mean, prior_var = self.renderer([prior_mean, prior_var])
 
-    #     z_map = self.sampler(prior_mean, prior_var)
+        z_map = self.sampler(prior_mean, prior_var)
 
-    #     rec = self.writer(z_map)
+        rec = self.writer(z_map)
 
-    #     return rec
+        return rec
 
     # def check_valid(self, offsets, l_pos, r_pos, im_size):
     #     flag = True
@@ -505,145 +513,146 @@ class PNPNet(object):
 
     #     return flag
 
-    # def generate_compose_tree(self, treex, latent_canvas_size):
-    #     for i in range(0, treex.num_children):
-    #         treex.children[i] = self.generate_compose_tree(treex.children[i], latent_canvas_size)
+    def generate_compose_tree(self, treex, latent_canvas_size):
+        for i in range(0, treex.num_children):
+            treex.children[i] = self.generate_compose_tree(treex.children[i], latent_canvas_size)
 
-    #     # one hot embedding of a word
-    #     ohe = self.get_code(self.dictionary, treex.word)
-    #     if treex.function == 'combine':
-    #         vis_dist = self.vis_dist(ohe)
-    #         pos_dist = self.pos_dist(ohe)
-    #         if treex.num_children > 0:
-    #             # visual content
-    #             vis_dist_child = treex.children[0].vis_dist
-    #             vis_dist = self.combine(vis_dist, vis_dist_child, 'vis')
-    #             # visual position
-    #             pos_dist_child = treex.children[0].pos_dist
-    #             pos_dist = self.combine(pos_dist, pos_dist_child, 'pos')
+        # one hot embedding of a word
+        ohe = self.get_code(self.dictionary, treex.word)
+        if treex.function == 'combine':
+            vis_dist = self.vis_dist(ohe)
+            pos_dist = self.pos_dist(ohe)
+            if treex.num_children > 0:
+                # visual content
+                vis_dist_child = treex.children[0].vis_dist
+                vis_dist = self.combine(vis_dist, vis_dist_child, 'vis')
+                # visual position
+                pos_dist_child = treex.children[0].pos_dist
+                pos_dist = self.combine(pos_dist, pos_dist_child, 'pos')
 
-    #         treex.vis_dist = vis_dist
-    #         treex.pos_dist = pos_dist
+            treex.vis_dist = vis_dist
+            treex.pos_dist = pos_dist
 
-    #     elif treex.function == 'describe':
-    #         # blend visual words
-    #         vis_dist = self.vis_dist(ohe)
-    #         pos_dist = self.pos_dist(ohe)
-    #         if treex.num_children > 0:
-    #             # visual content
-    #             vis_dist_child = treex.children[0].vis_dist
-    #             vis_dist = self.describe(vis_dist_child, vis_dist, 'vis')
-    #             # visual position
-    #             pos_dist_child = treex.children[0].pos_dist
-    #             pos_dist = self.describe(pos_dist_child, pos_dist, 'pos')
+        elif treex.function == 'describe':
+            # blend visual words
+            vis_dist = self.vis_dist(ohe)
+            pos_dist = self.pos_dist(ohe)
+            if treex.num_children > 0:
+                # visual content
+                vis_dist_child = treex.children[0].vis_dist
+                vis_dist = self.describe(vis_dist_child, vis_dist, 'vis')
+                # visual position
+                pos_dist_child = treex.children[0].pos_dist
+                pos_dist = self.describe(pos_dist_child, pos_dist, 'pos')
 
-    #         treex.pos_dist = pos_dist
+            treex.pos_dist = pos_dist
 
-    #         # regress bbox
-    #         treex.pos = np.clip(self.box_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int),
-    #                             int(self.ds),
-    #                             self.im_size).flatten() // self.ds
+            # regress bbox
+            treex.pos = np.clip(self.box_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int),
+                                int(self.ds),
+                                self.im_size).flatten() // self.ds
 
-    #         if treex.parent == None:
-    #             ones = self.get_ones(torch.Size([1, 1]))
-    #             if not self.bg_bias:
-    #                 bg_vis_dist = [Variable(torch.zeros(latent_canvas_size)).cuda(), \
-    #                                Variable(torch.zeros(latent_canvas_size)).cuda()]
-    #             else:
-    #                 bg_vis_dist = [self.bias_mean(ones).view(*latent_canvas_size), \
-    #                                self.bias_var(ones).view(*latent_canvas_size)]
-    #             b = [int(latent_canvas_size[2]) // 2 - treex.pos[0] // 2,
-    #                  int(latent_canvas_size[3]) // 2 - treex.pos[1] // 2, treex.pos[0], treex.pos[1]]
+            if treex.parent == None:
+                ones = self.get_ones(torch.Size([1, 1]))
+                # if not self.bg_bias:
+                #     bg_vis_dist = [Variable(torch.zeros(latent_canvas_size)).cuda(), \
+                #                    Variable(torch.zeros(latent_canvas_size)).cuda()]
+                # else:
+                #     bg_vis_dist = [self.bias_mean(ones).view(*latent_canvas_size), \
+                #                    self.bias_var(ones).view(*latent_canvas_size)]
+                b = [int(latent_canvas_size[2]) // 2 - treex.pos[0] // 2,
+                     int(latent_canvas_size[3]) // 2 - treex.pos[1] // 2, treex.pos[0], treex.pos[1]]
 
-    #             bg_vis_dist = [self.assign_util(bg_vis_dist[0], b, self.transform(vis_dist[0], treex.pos),
-    #                                             'assign'), \
-    #                            self.assign_util(bg_vis_dist[1], b,
-    #                                             self.transform(vis_dist[1], treex.pos, variance=True),
-    #                                             'assign')]
+                bg_vis_dist = [self.assign_util(latent_canvas_size, b, self.transform(vis_dist[0], treex.pos),
+                                                'assign'), \
+                               self.assign_util(latent_canvas_size, b,
+                                                self.transform(vis_dist[1], treex.pos, variance=True),
+                                                'assign')]
 
-    #             vis_dist = bg_vis_dist
-    #             treex.offsets = b
-    #         else:
-    #             # resize vis_dist
-    #             vis_dist = [self.transform(vis_dist[0], treex.pos), \
-    #                         self.transform(vis_dist[1], treex.pos, variance=True)]
+                vis_dist = bg_vis_dist
+                treex.offsets = b
+            else:
+                # resize vis_dist
+                vis_dist = [self.transform(vis_dist[0], treex.pos), \
+                            self.transform(vis_dist[1], treex.pos, variance=True)]
 
-    #         treex.vis_dist = vis_dist
+            treex.vis_dist = vis_dist
 
-    #     elif treex.function == 'layout':
-    #         # get pos word as position prior
-    #         treex.pos_dist = self.pos_dist(ohe)
-    #         assert (treex.num_children > 0)
+        elif treex.function == 'layout':
+            # get pos word as position prior
+            treex.pos_dist = self.pos_dist(ohe)
+            assert (treex.num_children > 0)
 
-    #         # get offsets: use gt for training
-    #         l_pos = treex.children[0].pos
-    #         r_pos = treex.children[1].pos
+            # get offsets: use gt for training
+            l_pos = treex.children[0].pos
+            r_pos = treex.children[1].pos
 
-    #         offsets = np.clip(self.offset_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int), 0,
-    #                           self.im_size).flatten() // self.ds
-    #         countdown = 0
-    #         while self.check_valid(offsets, l_pos, r_pos, self.im_size // self.ds) == False:
-    #             offsets = np.clip(self.offset_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int), 0,
-    #                               self.im_size).flatten() // self.ds
-    #             if countdown >= 100:
-    #                 print('Tried proposing more than 100 times.')
-    #                 if self.debug_mode:
-    #                     import IPython;
-    #                     IPython.embed()
-    #                 print('Warning! Manually adapt offsets')
-    #                 lat_size = self.im_size // self.ds
-    #                 if offsets[0] + l_pos[0] > lat_size:
-    #                     offsets[0] = lat_size - l_pos[0]
-    #                 if offsets[1] + l_pos[1] > lat_size:
-    #                     offsets[1] = lat_size - l_pos[1]
-    #                 if offsets[2] + r_pos[0] > lat_size:
-    #                     offsets[2] = lat_size - r_pos[0]
-    #                 if offsets[3] + r_pos[1] > lat_size:
-    #                     offsets[3] = lat_size - r_pos[1]
+            offsets = np.clip(self.offset_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int), 0,
+                              self.im_size).flatten() // self.ds
+            countdown = 0
+            while self.check_valid(offsets, l_pos, r_pos, self.im_size // self.ds) == False:
+                offsets = np.clip(self.offset_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int), 0,
+                                  self.im_size).flatten() // self.ds
+                if countdown >= 100:
+                    print('Tried proposing more than 100 times.')
+                    if self.debug_mode:
+                        import IPython;
+                        IPython.embed()
+                    print('Warning! Manually adapt offsets')
+                    lat_size = self.im_size // self.ds
+                    if offsets[0] + l_pos[0] > lat_size:
+                        offsets[0] = lat_size - l_pos[0]
+                    if offsets[1] + l_pos[1] > lat_size:
+                        offsets[1] = lat_size - l_pos[1]
+                    if offsets[2] + r_pos[0] > lat_size:
+                        offsets[2] = lat_size - r_pos[0]
+                    if offsets[3] + r_pos[1] > lat_size:
+                        offsets[3] = lat_size - r_pos[1]
 
-    #             countdown += 1
-    #         treex.offsets = offsets
-    #         l_offset = offsets[:2]
-    #         r_offset = offsets[2:]
+                countdown += 1
+            treex.offsets = offsets
+            l_offset = offsets[:2]
+            r_offset = offsets[2:]
 
-    #         ######################### constructing latent map ###############################
-    #         # bias filled mean&var
-    #         ones = self.get_ones(torch.Size([1, 1]))
-    #         if not self.bg_bias:
-    #             bg_vis_dist = [Variable(torch.zeros(latent_canvas_size)).cuda(), \
-    #                            Variable(torch.zeros(latent_canvas_size)).cuda()]
-    #         else:
-    #             bg_vis_dist = [self.bias_mean(ones).view(*latent_canvas_size), \
-    #                            self.bias_var(ones).view(*latent_canvas_size)]
+            ######################### constructing latent map ###############################
+            # bias filled mean&var
+            ones = self.get_ones(torch.Size([1, 1]))
+            if not self.bg_bias:
+                vis_dist_variable = [tf.zeros(latent_canvas_size), \
+                                    tf.zeros(latent_canvas_size)]
+            # else:
+            #     bg_vis_dist = [self.bias_mean(ones).view(*latent_canvas_size), \
+            #                    self.bias_var(ones).view(*latent_canvas_size)]
+            vis_dist = [None,None]
 
-    #         vis_dist = bg_vis_dist
-    #         try:
-    #             # arrange the layout of two children
-    #             vis_dist[0] = self.assign_util(vis_dist[0], list(l_offset) + list(l_pos), treex.children[0].vis_dist[0],
-    #                                            'assign')
-    #             vis_dist[1] = self.assign_util(vis_dist[1], list(l_offset) + list(l_pos), treex.children[0].vis_dist[1],
-    #                                            'assign')
+            # vis_dist = bg_vis_dist
+            try:
+                # arrange the layout of two children
+                vis_dist[0] = self.update_util(vis_dist_variable[0], list(l_offset) + list(l_pos), treex.children[0].vis_dist[0],
+                                               'assign')
+                vis_dist[1] = self.update_util(vis_dist_variable[1], list(l_offset) + list(l_pos), treex.children[0].vis_dist[1],
+                                               'assign')
 
-    #             vis_dist[0] = self.assign_util(vis_dist[0], list(r_offset) + list(r_pos), treex.children[1].vis_dist[0],
-    #                                            'assign')
-    #             vis_dist[1] = self.assign_util(vis_dist[1], list(r_offset) + list(r_pos), treex.children[1].vis_dist[1],
-    #                                            'assign')
-    #         except:
-    #             print('latent distribution doesnt fit size.')
-    #             import IPython;
-    #             IPython.embed()
+                vis_dist[0] = self.update_util(vis_dist[0], list(r_offset) + list(r_pos), treex.children[1].vis_dist[0],
+                                               'assign')
+                vis_dist[1] = self.update_util(vis_dist[1], list(r_offset) + list(r_pos), treex.children[1].vis_dist[1],
+                                               'assign')
+            except:
+                print('latent distribution doesnt fit size.')
+                import IPython;
+                IPython.embed()
 
-    #         if treex.parent != None:
-    #             p = [min(l_offset[0], r_offset[0]), min(l_offset[1], r_offset[1]), \
-    #                  max(l_offset[0] + l_pos[0], r_offset[0] + r_pos[0]),
-    #                  max(l_offset[1] + l_pos[1], r_offset[1] + r_pos[1])]
-    #             treex.pos = [p[2] - p[0], p[3] - p[1]]
-    #             treex.vis_dist = [vis_dist[0][:, :, p[0]:p[2], p[1]:p[3]], \
-    #                               vis_dist[1][:, :, p[0]:p[2], p[1]:p[3]]]
-    #         else:
-    #             treex.vis_dist = vis_dist
+            if treex.parent != None:
+                p = [min(l_offset[0], r_offset[0]), min(l_offset[1], r_offset[1]), \
+                     max(l_offset[0] + l_pos[0], r_offset[0] + r_pos[0]),
+                     max(l_offset[1] + l_pos[1], r_offset[1] + r_pos[1])]
+                treex.pos = [p[2] - p[0], p[3] - p[1]]
+                treex.vis_dist = [vis_dist[0][:, :, p[0]:p[2], p[1]:p[3]], \
+                                  vis_dist[1][:, :, p[0]:p[2], p[1]:p[3]]]
+            else:
+                treex.vis_dist = vis_dist
 
-    #     return treex
+        return treex
 
     def get_ones(self, size):
         return tf.ones(size)
@@ -668,6 +677,16 @@ class PNPNet(object):
             treex.pos_dist = None
             treex.pos = None
 
+
+
+def run():
+    import time
+    x = tf.random.uniform([1,64,64,3])
+    s = time.time()
+    rec_loss, kld_loss, pos_loss, modelout = model(x,trees,None, alpha=configs.alpha_ub, ifmask=True, maskweight=configs.maskweight)
+    print(time.time() - s)
+
+
 if __name__ =="__main__":
     config_dic = load_config("./configs/pnp_net_configs.yaml")
     configs = Struct(**config_dic)
@@ -681,9 +700,8 @@ if __name__ =="__main__":
     dictionary =['brown','cylinder','cube','left-front','yellow','sphere','right','right-front','right-behind','cyan','blue','gray','rubber','purple','metal','left-behind','green','red','left','small','large']
     # dictionary=train_loader.dictionary
     im_size =64
-    tf.enable_eager_execution()
     # # combine is gPoE; describe_op: CAT_gPoE
-    x = np.random.randn(1,64,64,3)
+    # x = np.random.randn(1,64,64,3)
     # op=[configs.combine_op, configs.describe_op]
     # lmap_size=im_size // 2 ** configs.ds
 
@@ -710,21 +728,15 @@ if __name__ =="__main__":
                    loss=configs.loss, debug_mode=False)
 
     # print(configs)
-    x = tf.random.uniform([1,64,64,3])
-    treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
+
+    treex = pickle.load(open("../PnpNet_tf_eager/data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
     trees = [treex]
     # print(trees)
-    with tf.GradientTape() as tape:
-        rec_loss, kld_loss, pos_loss, modelout = model(x,trees,None, alpha=configs.alpha_ub, ifmask=True, maskweight=configs.maskweight)
-        loss = rec_loss+ kld_loss+ pos_loss
+    for i in range(20):
+        run()
     st()
-    var = set([i.name for i in model.trainable_variables])
-    open("var.txt","w").write(str(var))
-    print("names",var,len(var))
-
-    gradients = tape.gradient(loss,model.trainable_variables)
-    print(len(gradients))
-    grad_vars = zip(gradients,model.trainable_variables)
+    # st()
+    print(len(model.trainable_variables))
     # for i in grad_vars:
     #     print(i[1],i[0])
     #     break

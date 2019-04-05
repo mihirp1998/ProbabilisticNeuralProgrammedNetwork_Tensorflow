@@ -6,7 +6,7 @@ dataset: CLEVR
 # checkpoint: ./results/CLEVR_64_MULTI_LARGE/PNP-Net-5/checkpoints/model_epoch_360.pth
 checkpoint:
 data_folder: CLEVR_64_MULTI_LARGE
-base_dir: ./data/CLEVR/
+base_dir: ../PnpNet_tf_eager/data/CLEVR/
 exp_dir_name: PNP-Net
 # Hyper parameter
 hiddim: 160
@@ -33,5 +33,5 @@ pos_beta: 1
 warmup_iter: 100
 sample_interval: 10
 validate_interval: 100
-save_interval: 10
+save_interval: 5
 

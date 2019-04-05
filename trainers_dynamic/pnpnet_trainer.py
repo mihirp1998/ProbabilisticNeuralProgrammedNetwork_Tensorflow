@@ -8,12 +8,14 @@ import pdb
 #import tf.contrib.eager as tfe
 # import torch
 import time
-from tensorflow.contrib.eager.python import tfe
+# from tensorflow.contrib.eager.python import tfe
 import tensorflow as tf
 from tensorflow.python.eager import context
-from tensorflow.contrib.eager.python import tfe
-tf.set_random_seed(1)
+# from tensorflow.contrib.eager.python import tfe
+# tf.set_random_seed(1)
 # tfe.seterr(inf_or_nan="raise")
+from tensorflow.python.platform import tf_logging
+# tf_logging.set_verbosity(tf_logging.DEBUG)
 from lib.utils import color_grid_vis, AverageMeter
 # from tf.keras import backend as K
 from keras import backend as K
@@ -32,6 +34,29 @@ class PNPNetTrainer:
         # self.sess = sess
         # model.build
 
+    
+    def train_step(self,data, trees, filenames,kl_coeff,ifmask):
+        with tf.GradientTape() as tape:
+            f_time = time.time()
+            rec_loss, kld_loss, pos_loss, modelout = self.model(data, trees, filenames, alpha=kl_coeff, ifmask=ifmask, maskweight=self.configs.maskweight)
+            # print("forward prop ",time.time()- f_time)
+            recon = modelout
+            rec_loss, kld_loss, pos_loss = tf.reduce_sum(rec_loss) , tf.reduce_sum(kld_loss) / self._total(data), tf.reduce_sum(pos_loss)
+            loss = rec_loss + self.configs.kl_beta * kld_loss + self.configs.pos_beta * pos_loss
+        b_time = time.time()
+        # st()
+        gradients = tape.gradient(loss,self.model.trainable_variables)
+        # gradients =tf.map_fn(lambda x: tf.clip_by_value(x,-3000,3000,name=None), gradients)
+        # gradients =[tf.clip_by_norm(i,2,name=None) if i != None else None for i in gradients]
+
+        # print("max ",tf.math.reduce_max([tf.math.reduce_max(i) for i in gradients]),"min",tf.math.reduce_min([tf.math.reduce_min(i) for i in gradients]))
+        # print("calculate gradients ",time.time()-b_time)
+        # st()
+        grad_vars = zip(gradients,self.model.trainable_variables)
+        o_time = time.time()
+        self.optimizer.apply_gradients(grad_vars)
+        return rec_loss,kld_loss,pos_loss,recon
+
     def train_epoch(self, epoch_num, timestamp_start):
         # self.model.train()
         # st()
@@ -41,6 +66,11 @@ class PNPNetTrainer:
         batch_idx = 0
         epoch_end = False
         # annealing for kl penalty
+
+
+
+
+
         kl_coeff = float(epoch_num) / float(self.configs.warmup_iter + 1)
         if kl_coeff >= self.configs.alpha_ub:
             kl_coeff = self.configs.alpha_ub
@@ -56,21 +86,7 @@ class PNPNetTrainer:
             ifmask = False
             if self.configs.maskweight > 0:
                 ifmask = True
-            with tf.GradientTape() as tape:
-                f_time = time.time()
-                rec_loss, kld_loss, pos_loss, modelout = self.model(data, trees, filenames, alpha=kl_coeff, ifmask=ifmask, maskweight=self.configs.maskweight)
-                # print("forward prop ",time.time()- f_time)
-                recon = modelout
-                rec_loss, kld_loss, pos_loss = tf.reduce_sum(rec_loss) , tf.reduce_sum(kld_loss) / self._total(data), tf.reduce_sum(pos_loss)
-                loss = rec_loss + self.configs.kl_beta * kld_loss + self.configs.pos_beta * pos_loss
-            b_time = time.time()
-            # st()
-            gradients = tape.gradient(loss,self.model.all_trainable_variables)
-            # print("calculate gradients ",time.time()-b_time)
-            # st()
-            grad_vars = zip(gradients,self.model.all_trainable_variables)
-            o_time = time.time()
-            self.optimizer.apply_gradients(grad_vars, tf.train.get_or_create_global_step())
+            rec_loss,kld_loss,pos_loss,recon =self.train_step(data, trees, filenames,kl_coeff,ifmask)
             # print("apply gradients ",time.time()-o_time)
             # print("num_variables ",len(self.model.all_trainable_variables))
             # loss.backward()
@@ -160,42 +176,42 @@ class PNPNetTrainer:
 
     #     return minloss
 
-    # def sample(self, epoch_num, sample_num, timestamp_start):
-    #     self.model.eval()
+    def sample(self, epoch_num, sample_num, timestamp_start):
+        # self.model.eval()
 
-    #     data, trees, _, _ = self.gen_loader.next_batch()
-    #     data = Variable(data, volatile=True).cuda()
-    #     epoch_result_dir = osp.join(self.configs.exp_dir, 'samples', 'epoch-{}'.format(epoch_num))
+        data, trees, _, _ = self.gen_loader.next_batch()
+        # data = Variable(data, volatile=True).cuda()
+        epoch_result_dir = osp.join(self.configs.exp_dir, 'samples', 'epoch-{}'.format(epoch_num))
 
-    #     try:
-    #         os.makedirs(epoch_result_dir)
-    #     except:
-    #         pass
+        try:
+            os.makedirs(epoch_result_dir)
+        except:
+            pass
 
-    #     samples_image_dict = dict()
-    #     data_image_dict = dict()
-    #     batch_size = None
-    #     for j in range(sample_num):
-    #         sample = self.model.generate(data, trees)
-    #         if not batch_size:
-    #             batch_size = sample.size(0)
-    #         for i in range(0, sample.size(0)):
-    #             samples_image_dict.setdefault(i, list()).append(sample.cpu().data.numpy().transpose(0, 2, 3, 1)[i])
-    #             if j == sample_num - 1:
-    #                 data_image_dict[i] = data.cpu().data.numpy().transpose(0, 2, 3, 1)[i]
-    #         self.model.clean_tree(trees)
-    #         print(j)
+        samples_image_dict = dict()
+        data_image_dict = dict()
+        batch_size = None
+        for j in range(sample_num):
+            sample = self.model.generate(data, trees)
+            if not batch_size:
+                batch_size = sample.size(0)
+            for i in range(0, sample.size(0)):
+                samples_image_dict.setdefault(i, list()).append(sample.cpu().data.numpy().transpose(0, 2, 3, 1)[i])
+                if j == sample_num - 1:
+                    data_image_dict[i] = data.cpu().data.numpy().transpose(0, 2, 3, 1)[i]
+            self.model.clean_tree(trees)
+            print(j)
 
-    #     for i in range(batch_size):
-    #         samples = np.clip(np.stack(samples_image_dict[i], axis=0), -1, 1)
-    #         data = data_image_dict[i]
-    #         color_grid_vis(samples, nh=2, nw=sample_num // 2,
-    #                        save_path=osp.join(epoch_result_dir, 'generativenmn_{}_sample.png'.format(i)))
-    #         scipy.misc.imsave(osp.join(epoch_result_dir, 'generativenmn_{}_real.png'.format(i)), data)
-    #         torch.save(trees[i], osp.join(epoch_result_dir, 'generativenmn_tree_' + str(i) + '.pth'))
-    #         print('====> Epoch: {}  Generating image number: {:d}'.format(epoch_num, i))
+        for i in range(batch_size):
+            samples = np.clip(np.stack(samples_image_dict[i], axis=0), -1, 1)
+            data = data_image_dict[i]
+            color_grid_vis(samples, nh=2, nw=sample_num // 2,
+                           save_path=osp.join(epoch_result_dir, 'generativenmn_{}_sample.png'.format(i)))
+            scipy.misc.imsave(osp.join(epoch_result_dir, 'generativenmn_{}_real.png'.format(i)), data)
+            torch.save(trees[i], osp.join(epoch_result_dir, 'generativenmn_tree_' + str(i) + '.pth'))
+            print('====> Epoch: {}  Generating image number: {:d}'.format(epoch_num, i))
 
-    #     elapsed_time = \
-    #         datetime.datetime.now(pytz.timezone('America/New_York')) - \
-    #         timestamp_start
-    #     print('Elapsed time:', elapsed_time)
+        elapsed_time = \
+            datetime.datetime.now(pytz.timezone('America/New_York')) - \
+            timestamp_start
+        print('Elapsed time:', elapsed_time)

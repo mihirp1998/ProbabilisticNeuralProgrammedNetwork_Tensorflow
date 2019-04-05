@@ -1,11 +1,10 @@
 import numpy as np
 import tensorflow as tf
-tf.set_random_seed(1)
+# tf.set_random_seed(1)
 
-class Transform(object):
-    def __init__(self,name, matrix='default'):
+class Transform(tf.keras.Model):
+    def __init__(self, matrix='default'):
         super(Transform, self).__init__()
-        self.name = name
 
     def bilinear_sampler(self,img, x, y):
         """
@@ -167,30 +166,36 @@ class Transform(object):
 
         return batch_grids
 
-    def __call__(self, x, hw, variance=False):
-        with tf.variable_scope(self.name):
-            if variance:
-                x = tf.exp(x / 2.0)
-            # size = torch.Size([x.size(0), x.size(1), int(hw[0]), int(hw[1])])
+    @tf.function
+    def call(self, x, hw, variance=False):
+        if variance:
+            x = tf.math.exp(x / 2.0)
+        # size = torch.Size([x.size(0), x.size(1), int(hw[0]), int(hw[1])])
 
-            # grid generation
-            theta = np.array([[[1, 0, 0], [0, 1, 0]]], dtype=np.float32)
-            theta = np.repeat(theta,int(x.shape[0]),0)
-            # theta = theta.expand(x.shape[0], theta.shape[1], theta.shape[2])
-            gridout = self.affine_grid_generator(hw[0],hw[1],theta)
+        # grid generation
+        theta = np.array([[[1, 0, 0], [0, 1, 0]]], dtype=np.float32)
+        theta = np.repeat(theta,int(x.shape[0]),0)
+        # theta = theta.expand(x.shape[0], theta.shape[1], theta.shape[2])
+        gridout = self.affine_grid_generator(hw[0],hw[1],theta)
 
-            x_s = gridout[:, 0, :, :]
-            y_s = gridout[:, 1, :, :]
-            # bilinear sampling
-            out = self.bilinear_sampler(x, x_s, y_s)
-            if variance:
-                out = tf.log(out) * 2.0
+        x_s = gridout[:, 0, :, :]
+        y_s = gridout[:, 1, :, :]
+        # bilinear sampling
+        out = self.bilinear_sampler(x, x_s, y_s)
+        if variance:
+            out = tf.math.log(out) * 2.0
         return out
 
+def run():
+  x1 = tf.random.normal([1,32,32,3])
+  import time
+  s = time.time()
+  t(x1,[60,60])
+  print(time.time() - s)
+
 if __name__ == "__main__":
-    t = Transform("transform")
-    variables_names = [v.name for v in tf.trainable_variables()]
-    print(variables_names)
-    a = tf.zeros([1,32,32,3])
-    m = t(a,[60,60])
-    print(m)
+    t = Transform()
+    for i in range(20):
+        run()
+    print(len(t.trainable_variables))
+

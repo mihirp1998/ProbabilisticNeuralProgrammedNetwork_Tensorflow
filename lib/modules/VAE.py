@@ -3,15 +3,14 @@ from lib.BiKLD import BiKLD
 from lib.reparameterize import reparameterize
 import tensorflow as tf
 from collections import OrderedDict
-tf.set_random_seed(1)
+# tf.set_random_seed(1)
 
 
-class VAE(object):
-    def __init__(self,name, indim, latentdim, half=False):
+class VAE(tf.keras.Model):
+    def __init__(self, name_scope, indim, latentdim, half=False):
         super(VAE, self).__init__()
-        self.name = name
         self.half = half
-        self.trainable_variables= OrderedDict()
+        self.name_scope = name_scope
         if self.half is False:
             self.encoder = tf.keras.Sequential([
                 tf.keras.layers.Dense(latentdim * 2),
@@ -35,52 +34,44 @@ class VAE(object):
 
         self.sampler = reparameterize()
 
-    def __call__(self, x=None, prior=None):
-        with tf.variable_scope(self.name):
-            x = tf.convert_to_tensor(x)
+    @tf.function
+    def call(self, x=None, prior=None):
+        with tf.name_scope(self.name_scope) as scope:
+            x_c = tf.convert_to_tensor(x)
             prior = [tf.reshape(prior[0],(1, -1)), tf.reshape(prior[1],(1, -1)) ]
 
             if self.half is False:
-                encoding = self.encoder(x)
-                if "encoder" not in self.trainable_variables:
-                    self.trainable_variables["encoder"] =  self.encoder.trainable_variables
-
+                encoding = self.encoder(x_c)
                 mean, logvar = self.mean(encoding), self.logvar(encoding)
-
-                if "mean" not in self.trainable_variables:
-                    self.trainable_variables["mean"] = self.mean.trainable_variables
-
-                if "logvar" not in self.trainable_variables:
-                    self.trainable_variables["logvar"] = self.logvar.trainable_variables
-
                 kld = self.bikld([mean, logvar], prior)
                 z = self.sampler(mean, logvar)
             else:
                 z = self.sampler(prior[0], prior[1])
                 kld = 0
-
             decoding = self.decoder(z)
-            if "decoder" not in self.trainable_variables:
-                self.trainable_variables["decoder"] = self.decoder.trainable_variables
-
         return decoding, kld
 
     def generate(self, prior):
         prior = [prior[0].view(1, -1), prior[1].view(1, -1)]
         z = self.sampler(*prior)
         decoding = self.decoder(z)
-
         return decoding
 
 
+def run():
+    mean = tf.zeros((10, 14))
+    var  = tf.zeros((10, 14))
+    data = tf.zeros((10, 16))
+    import time
+    s = time.time()
+    model(data, [mean, var])
+    print(time.time() - s)
+
 if __name__ =="__main__":
-    model = VAE("vae",6, 4,1)
-    mean = tf.zeros((1, 4))
-    var  = tf.zeros((1, 4))
-    data = tf.zeros((1, 6))
-    out, kld = model(data, [mean, var])
-    print(out,kld)
-    print(len(model.trainable_variables),len(tf.trainable_variables()))
+    model = VAE(16, 14,1)
+    for i in range(20):
+        run()
+    print(len(model.trainable_variables))
 '''
 #Test case 0
 model = VAE(6, 4).cuda()
