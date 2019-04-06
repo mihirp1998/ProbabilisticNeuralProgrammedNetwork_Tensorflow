@@ -134,6 +134,19 @@ class PNPNet(tf.keras.Model):
         # self.bias_mean = nn.Linear(1, self.latentdim * self.lmap_size * self.lmap_size, bias=False)
         # self.bias_var = nn.Linear(1, self.latentdim * self.lmap_size * self.lmap_size, bias=False)
         self.latent_canvas_size = [1, self.lmap_size, self.lmap_size, self.latentdim]
+    def pos_criterion_unscaled(self,x,y):
+        val = self.pos_criterion(x,y)
+        # st()
+        val = val*self._total(x)
+        return val
+    def pixelrecon_criterion_unscaled(self,x,y):
+        val = self.pixelrecon_criterion(x,y)
+        val = val*self._total(x)
+        return val
+
+    @staticmethod
+    def _total(tensor):
+        return tf.cast(tf.math.reduce_prod(tensor.shape),tf.float32)
 
     def get_mask_from_tree(self, tree, size):
         mask = np.zeros(size,np.float32)
@@ -252,9 +265,9 @@ class PNPNet(tf.keras.Model):
 
         if ifmask is True:
             mask = (mask + maskweight) / (maskweight + 1.0)
-            rec_loss = self.pixelrecon_criterion(mask * rec, mask * x)
+            rec_loss = self.pixelrecon_criterion_unscaled(mask * rec, mask * x)
         else:
-            rec_loss = self.pixelrecon_criterion(rec, x)
+            rec_loss = self.pixelrecon_criterion_unscaled(rec, x)
 
         # self.all_trainable_variables = odictval2list(self.trainable_variables.values())
         # print(rec_loss,"rec loss")
@@ -327,7 +340,7 @@ class PNPNet(tf.keras.Model):
             target_box = tf.convert_to_tensor(np.array(treex.bbox[2:])[np.newaxis, ...].astype(np.float32))
             regress_box, kl_box = self.box_vae(target_box, prior=treex.pos_dist)
             # st()
-            treex.pos_loss = self.pos_criterion(target_box,regress_box) + kl_box
+            treex.pos_loss = self.pos_criterion_unscaled(target_box,regress_box) + kl_box
             # print(treex.pos,vis_dist)
             if treex.parent == None:
                 ones = self.get_ones([1, 1])
@@ -372,7 +385,7 @@ class PNPNet(tf.keras.Model):
             target_offset = np.append(l_offset * self.ds, r_offset * self.ds).astype(np.float32)
             target_offset = tf.convert_to_tensor(target_offset[np.newaxis, ...])
             regress_offset, kl_offset = self.offset_vae(target_offset, prior=treex.pos_dist)
-            treex.pos_loss = self.pos_criterion(regress_offset, target_offset) + kl_offset + treex.children[0].pos_loss + treex.children[1].pos_loss
+            treex.pos_loss = self.pos_criterion_unscaled(regress_offset, target_offset) + kl_offset + treex.children[0].pos_loss + treex.children[1].pos_loss
 
             ######################### constructing latent map ###############################
             # bias filled mean&var
@@ -439,12 +452,12 @@ class PNPNet(tf.keras.Model):
         #     raise ValueError('Please specify the correct mode.')
         return a
 
-    def update_util(self, canvas, bx, b, mode):
+    def update_util(self, canvas, bx, val, mode):
         if mode == 'assign':
             # st()
             indices = self.gen_indices(bx[0],bx[1],bx[2],bx[3])
             # st()
-            a= tf.tensor_scatter_nd_update(canvas,indices,b)
+            a= tf.tensor_scatter_nd_update(canvas,indices,val)
             # a[:,bx[0]:bx[0] + bx[2], bx[1]:bx[1] + bx[3],:].assign(b)
         # elif mode == 'add':
         #     a[:, :, bx[0]:bx[0] + bx[2], bx[1]:bx[1] + bx[3]] = \
@@ -472,9 +485,9 @@ class PNPNet(tf.keras.Model):
         ################################
         ##    input: images, trees    ##
         ################################
-        if self.multigpu_full:
-            treex_pick = [treex[ele[0]] for ele in treeindex.data.cpu().numpy().astype(int)]
-            treex = treex_pick
+        # if self.multigpu_full:
+        #     treex_pick = [treex[ele[0]] for ele in treeindex.data.cpu().numpy().astype(int)]
+        #     treex = treex_pick
 
         # tranverse trees to compose visual words
         prior_mean = []
@@ -484,8 +497,8 @@ class PNPNet(tf.keras.Model):
             treex[i] = self.generate_compose_tree(treex[i], self.latent_canvas_size)
             prior_mean += [treex[i].vis_dist[0]]
             prior_var += [treex[i].vis_dist[1]]
-        prior_mean = tf.concat(prior_mean, dim=0)
-        prior_var = tf.concat(prior_var, dim=0)
+        prior_mean = tf.concat(prior_mean, 0)
+        prior_var = tf.concat(prior_var, 0)
 
         # sample z map
         prior_mean, prior_var = self.renderer([prior_mean, prior_var])
@@ -496,22 +509,22 @@ class PNPNet(tf.keras.Model):
 
         return rec
 
-    # def check_valid(self, offsets, l_pos, r_pos, im_size):
-    #     flag = True
-    #     if offsets[0] + l_pos[0] > im_size:
-    #         flag = False
-    #         return flag
-    #     if offsets[1] + l_pos[1] > im_size:
-    #         flag = False
-    #         return flag
-    #     if offsets[2] + r_pos[0] > im_size:
-    #         flag = False
-    #         return flag
-    #     if offsets[3] + r_pos[1] > im_size:
-    #         flag = False
-    #         return flag
+    def check_valid(self, offsets, l_pos, r_pos, im_size):
+        flag = True
+        if offsets[0] + l_pos[0] > im_size:
+            flag = False
+            return flag
+        if offsets[1] + l_pos[1] > im_size:
+            flag = False
+            return flag
+        if offsets[2] + r_pos[0] > im_size:
+            flag = False
+            return flag
+        if offsets[3] + r_pos[1] > im_size:
+            flag = False
+            return flag
 
-    #     return flag
+        return flag
 
     def generate_compose_tree(self, treex, latent_canvas_size):
         for i in range(0, treex.num_children):
@@ -525,43 +538,43 @@ class PNPNet(tf.keras.Model):
             if treex.num_children > 0:
                 # visual content
                 vis_dist_child = treex.children[0].vis_dist
-                vis_dist = self.combine(vis_dist, vis_dist_child, 'vis')
+                vis_dist = self.combine_vis(vis_dist, vis_dist_child)
                 # visual position
                 pos_dist_child = treex.children[0].pos_dist
-                pos_dist = self.combine(pos_dist, pos_dist_child, 'pos')
+                pos_dist = self.combine_pos(pos_dist, pos_dist_child)
 
             treex.vis_dist = vis_dist
             treex.pos_dist = pos_dist
 
         elif treex.function == 'describe':
             # blend visual words
+            # st()
             vis_dist = self.vis_dist(ohe)
             pos_dist = self.pos_dist(ohe)
             if treex.num_children > 0:
                 # visual content
                 vis_dist_child = treex.children[0].vis_dist
-                vis_dist = self.describe(vis_dist_child, vis_dist, 'vis')
+                vis_dist = self.describe_vis(vis_dist_child, vis_dist)
                 # visual position
                 pos_dist_child = treex.children[0].pos_dist
-                pos_dist = self.describe(pos_dist_child, pos_dist, 'pos')
+                pos_dist = self.describe_pos(pos_dist_child, pos_dist)
 
             treex.pos_dist = pos_dist
 
             # regress bbox
-            treex.pos = np.clip(self.box_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int),
-                                int(self.ds),
-                                self.im_size).flatten() // self.ds
+            treex.pos = tf.cast(tf.reshape(tf.clip_by_value(self.box_vae.generate(prior=treex.pos_dist),self.ds,self.im_size),[-1]) // self.ds,tf.int32)
 
             if treex.parent == None:
-                ones = self.get_ones(torch.Size([1, 1]))
+                ones = self.get_ones([1, 1])
+                # st()
                 # if not self.bg_bias:
                 #     bg_vis_dist = [Variable(torch.zeros(latent_canvas_size)).cuda(), \
                 #                    Variable(torch.zeros(latent_canvas_size)).cuda()]
                 # else:
                 #     bg_vis_dist = [self.bias_mean(ones).view(*latent_canvas_size), \
                 #                    self.bias_var(ones).view(*latent_canvas_size)]
-                b = [int(latent_canvas_size[2]) // 2 - treex.pos[0] // 2,
-                     int(latent_canvas_size[3]) // 2 - treex.pos[1] // 2, treex.pos[0], treex.pos[1]]
+                b = [int(latent_canvas_size[1]) // 2 - treex.pos[0] // 2,
+                     int(latent_canvas_size[2]) // 2 - treex.pos[1] // 2, treex.pos[0], treex.pos[1]]
 
                 bg_vis_dist = [self.assign_util(latent_canvas_size, b, self.transform(vis_dist[0], treex.pos),
                                                 'assign'), \
@@ -579,6 +592,7 @@ class PNPNet(tf.keras.Model):
             treex.vis_dist = vis_dist
 
         elif treex.function == 'layout':
+            # st()
             # get pos word as position prior
             treex.pos_dist = self.pos_dist(ohe)
             assert (treex.num_children > 0)
@@ -587,12 +601,10 @@ class PNPNet(tf.keras.Model):
             l_pos = treex.children[0].pos
             r_pos = treex.children[1].pos
 
-            offsets = np.clip(self.offset_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int), 0,
-                              self.im_size).flatten() // self.ds
+            offsets = tf.cast(tf.reshape(tf.clip_by_value(self.offset_vae.generate(prior=treex.pos_dist), 0,self.im_size),[-1]) // self.ds,tf.int32)
             countdown = 0
             while self.check_valid(offsets, l_pos, r_pos, self.im_size // self.ds) == False:
-                offsets = np.clip(self.offset_vae.generate(prior=treex.pos_dist).data.cpu().numpy().astype(int), 0,
-                                  self.im_size).flatten() // self.ds
+                offsets = tf.cast(tf.reshape(tf.clip_by_value(self.offset_vae.generate(prior=treex.pos_dist), 0,self.im_size),[-1]) // self.ds,tf.int32)
                 if countdown >= 100:
                     print('Tried proposing more than 100 times.')
                     if self.debug_mode:
@@ -616,7 +628,7 @@ class PNPNet(tf.keras.Model):
 
             ######################### constructing latent map ###############################
             # bias filled mean&var
-            ones = self.get_ones(torch.Size([1, 1]))
+            # ones = self.get_ones([1, 1])
             if not self.bg_bias:
                 vis_dist_variable = [tf.zeros(latent_canvas_size), \
                                     tf.zeros(latent_canvas_size)]
@@ -628,6 +640,7 @@ class PNPNet(tf.keras.Model):
             # vis_dist = bg_vis_dist
             try:
                 # arrange the layout of two children
+                # st()
                 vis_dist[0] = self.update_util(vis_dist_variable[0], list(l_offset) + list(l_pos), treex.children[0].vis_dist[0],
                                                'assign')
                 vis_dist[1] = self.update_util(vis_dist_variable[1], list(l_offset) + list(l_pos), treex.children[0].vis_dist[1],
@@ -647,8 +660,8 @@ class PNPNet(tf.keras.Model):
                      max(l_offset[0] + l_pos[0], r_offset[0] + r_pos[0]),
                      max(l_offset[1] + l_pos[1], r_offset[1] + r_pos[1])]
                 treex.pos = [p[2] - p[0], p[3] - p[1]]
-                treex.vis_dist = [vis_dist[0][:, :, p[0]:p[2], p[1]:p[3]], \
-                                  vis_dist[1][:, :, p[0]:p[2], p[1]:p[3]]]
+                treex.vis_dist = [vis_dist[0][:,p[0]:p[2], p[1]:p[3],:], \
+                                  vis_dist[1][:,p[0]:p[2], p[1]:p[3],:]]
             else:
                 treex.vis_dist = vis_dist
 

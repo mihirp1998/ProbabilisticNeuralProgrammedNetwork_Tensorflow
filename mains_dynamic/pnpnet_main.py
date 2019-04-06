@@ -164,21 +164,23 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     #     {'params': model.renderer.parameters()},
     #     {'params': model.bias_mean.parameters()},
     #     {'params': model.bias_var.parameters()}
+    load_epoch =0
     # ], lr=configs.lr)
     ifmask = True
     # st()
     # x = tf.random.uniform([1,64,64,3])
-    # treex = pickle.load(open("./data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
+    # treex = pickle.load(open("../PnpNet_tf_eager/data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
     # trees = [treex]
-    # st()
+    # # st()
     # rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
 
-    load_epoch =0
+    # load_epoch =10
     # saver = tfe.Saver(model.all_trainable_variables)
     # saver.restore(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
     # print("Weights restored for {} from epoch {}".format(len(model.all_trainable_variables),load_epoch))
 
     # model.cuda()
+    # model.load_weights(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
     # st()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
 
@@ -192,8 +194,8 @@ def train(model, train_loader, test_loader, gen_loader, configs):
             print("Model saved")
         # if epoch_num % configs.validate_interval == 0 and epoch_num > 0:
         #     minloss = trainer.validate(epoch_num, timestamp_start, minloss)
-        # if epoch_num % configs.sample_interval == 0 and epoch_num > 0:
-        #     trainer.sample(epoch_num, sample_num=8, timestamp_start=timestamp_start)
+        if epoch_num % configs.sample_interval == 0 and epoch_num > 0:
+            trainer.sample(epoch_num, sample_num=4, timestamp_start=timestamp_start)
         # if epoch_num % configs.save_interval == 0 and epoch_num > 0:
         #     torch.save(model.state_dict(),
         #                osp.join(configs.exp_dir, 'checkpoints', 'model_epoch_{0}.pth'.format(epoch_num)))

@@ -41,7 +41,7 @@ class PNPNetTrainer:
             rec_loss, kld_loss, pos_loss, modelout = self.model(data, trees, filenames, alpha=kl_coeff, ifmask=ifmask, maskweight=self.configs.maskweight)
             # print("forward prop ",time.time()- f_time)
             recon = modelout
-            rec_loss, kld_loss, pos_loss = tf.reduce_sum(rec_loss) , tf.reduce_sum(kld_loss) / self._total(data), tf.reduce_sum(pos_loss)
+            rec_loss, kld_loss, pos_loss = tf.reduce_sum(rec_loss)/ self._total(data) , tf.reduce_sum(kld_loss) / self._total(data), tf.reduce_sum(pos_loss)/ self._total(data)
             loss = rec_loss + self.configs.kl_beta * kld_loss + self.configs.pos_beta * pos_loss
         b_time = time.time()
         # st()
@@ -178,8 +178,8 @@ class PNPNetTrainer:
 
     def sample(self, epoch_num, sample_num, timestamp_start):
         # self.model.eval()
-
-        data, trees, _, _ = self.gen_loader.next_batch()
+        # st()
+        data, trees, _, epoch_end,filenames = self.gen_loader.next_batch()
         # data = Variable(data, volatile=True).cuda()
         epoch_result_dir = osp.join(self.configs.exp_dir, 'samples', 'epoch-{}'.format(epoch_num))
 
@@ -194,21 +194,21 @@ class PNPNetTrainer:
         for j in range(sample_num):
             sample = self.model.generate(data, trees)
             if not batch_size:
-                batch_size = sample.size(0)
-            for i in range(0, sample.size(0)):
-                samples_image_dict.setdefault(i, list()).append(sample.cpu().data.numpy().transpose(0, 2, 3, 1)[i])
+                batch_size = sample.shape[0]
+            for i in range(0, sample.shape[0]):
+                samples_image_dict.setdefault(i, list()).append(sample.numpy()[i])
                 if j == sample_num - 1:
-                    data_image_dict[i] = data.cpu().data.numpy().transpose(0, 2, 3, 1)[i]
+                    data_image_dict[i] = data.numpy()[i]
             self.model.clean_tree(trees)
             print(j)
-
+        st()
         for i in range(batch_size):
             samples = np.clip(np.stack(samples_image_dict[i], axis=0), -1, 1)
             data = data_image_dict[i]
             color_grid_vis(samples, nh=2, nw=sample_num // 2,
                            save_path=osp.join(epoch_result_dir, 'generativenmn_{}_sample.png'.format(i)))
             scipy.misc.imsave(osp.join(epoch_result_dir, 'generativenmn_{}_real.png'.format(i)), data)
-            torch.save(trees[i], osp.join(epoch_result_dir, 'generativenmn_tree_' + str(i) + '.pth'))
+            # torch.save(trees[i], osp.join(epoch_result_dir, 'generativenmn_tree_' + str(i) + '.pth'))
             print('====> Epoch: {}  Generating image number: {:d}'.format(epoch_num, i))
 
         elapsed_time = \

@@ -51,8 +51,9 @@ class VAE(tf.keras.Model):
             decoding = self.decoder(z)
         return decoding, kld
 
+    @tf.function
     def generate(self, prior):
-        prior = [prior[0].view(1, -1), prior[1].view(1, -1)]
+        prior = [tf.reshape(prior[0],(1, -1)), tf.reshape(prior[1],[1, -1])]
         z = self.sampler(*prior)
         decoding = self.decoder(z)
         return decoding

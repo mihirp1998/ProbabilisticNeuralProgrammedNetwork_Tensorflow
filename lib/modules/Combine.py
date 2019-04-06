@@ -15,10 +15,10 @@ class Combine_Vis(tf.keras.Model):
     self.hiddim_v = hiddim_v
     if self.op == 'gPoE':
       self.gates_v = tf.keras.Sequential([tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
-        InstanceNormalization(),
+        InstanceNormalization(axis=3),
         tf.keras.layers.Activation('sigmoid'),
         tf.keras.layers.Conv2D(hiddim_v*4,3,1,padding="same"),
-        InstanceNormalization()])
+        InstanceNormalization(axis=3)])
 
   @tf.function
   def call(self, x1, x2):
@@ -46,10 +46,10 @@ class Combine_Pos(tf.keras.Model):
     self.hiddim_p = hiddim_p
     if self.op == 'gPoE':
       self.gates_p = tf.keras.Sequential([tf.keras.layers.Conv2D(hiddim_p*4,3,1,padding="same"),
-        InstanceNormalization(),
+        InstanceNormalization(axis=3),
         tf.keras.layers.Activation('elu'),
         tf.keras.layers.Conv2D(hiddim_p*4,3,1,padding="same"),
-        InstanceNormalization()])
+        InstanceNormalization(axis=3)])
 
   @tf.function
   def call(self, x1, x2):
