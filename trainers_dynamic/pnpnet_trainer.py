@@ -81,7 +81,7 @@ class PNPNetTrainer:
         while epoch_end is False:
             data, trees, _, epoch_end,filenames = self.train_loader.next_batch()
             # data = Variable(data).cuda()
-            st()
+            # st()
             # self.=izer.zero_grad()
             ifmask = False
             if self.configs.maskweight > 0:
