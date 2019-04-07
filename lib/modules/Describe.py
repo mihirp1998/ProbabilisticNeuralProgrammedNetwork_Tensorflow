@@ -16,26 +16,26 @@ class Describe_Vis(tf.keras.Model):
         if op == 'CAT_gPoE':
             self.net1_mean_vis = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_v, 3, 1,padding="same"),
-                InstanceNormalization(axis=3),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_v, 3, 1,padding="same"),
-                InstanceNormalization(axis=3)]
+                InstanceNormalization()]
             )
 
             self.net1_var_vis = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_v, 3, 1, "same"),
-                InstanceNormalization(axis=3),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_v, 3, 1, "same"),
-                InstanceNormalization(axis=3)]
+                InstanceNormalization()]
             )
 
             self.gates_v = tf.keras.Sequential(
                [tf.keras.layers.Conv2D(hiddim_v * 4, 3, 1, "same"),
-                InstanceNormalization(axis=3),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_v * 4, 3, 1, "same"),
-                InstanceNormalization(axis=3)]
+                InstanceNormalization()]
             )
 
     # Q: in gpoe why do we do different actions on mean and variance
@@ -78,26 +78,26 @@ class Describe_Pos(tf.keras.Model):
         if op == 'CAT_gPoE':
             self.net1_mean_pos = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                InstanceNormalization(axis=3),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                InstanceNormalization(axis=3)]
+                InstanceNormalization()]
             )
 
             self.net1_var_pos = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                InstanceNormalization(axis=3),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_p, 1,1, "same"),
-                InstanceNormalization(axis=3)]
+                InstanceNormalization()]
             )
 
             self.gates_p = tf.keras.Sequential(
                 [tf.keras.layers.Conv2D(hiddim_p * 4, 3, 1, "same"),
-                InstanceNormalization(axis=3),
+                InstanceNormalization(),
                 tf.keras.layers.Activation('elu'),
                 tf.keras.layers.Conv2D(hiddim_p * 4, 3, 1, "same"),
-                InstanceNormalization(axis=3)]
+                InstanceNormalization()]
             )
     # Q: in gpoe why do we do different actions on mean and variance
     @tf.function

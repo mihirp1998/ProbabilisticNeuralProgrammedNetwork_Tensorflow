@@ -7,7 +7,7 @@ dataset: CLEVR
 checkpoint:
 data_folder: CLEVR_64_MULTI_LARGE
 base_dir: ../PnpNet_tf_eager/data/CLEVR/
-exp_dir_name: PNP-Net_in_axis
+exp_dir_name: PNP-Net_normal
 # Hyper parameter
 hiddim: 160
 latentdim: 64
