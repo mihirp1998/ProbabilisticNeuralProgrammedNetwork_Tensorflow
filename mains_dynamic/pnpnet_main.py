@@ -164,15 +164,15 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     #     {'params': model.renderer.parameters()},
     #     {'params': model.bias_mean.parameters()},
     #     {'params': model.bias_var.parameters()}
-    load_epoch =0
+    load_epoch =40
     # ], lr=configs.lr)
     ifmask = True
     # st()
-    # x = tf.random.uniform([1,64,64,3])
-    # treex = pickle.load(open("../PnpNet_tf_eager/data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
-    # trees = [treex]
+    x = tf.random.uniform([1,64,64,3])
+    treex = pickle.load(open("../PnpNet_tf_eager/data/CLEVR/CLEVR_64_MULTI_LARGE/trees/train/CLEVR_new_000002.tree","rb"))
+    trees = [treex]
     # # st()
-    # rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
+    rec_loss, kld_loss, pos_loss, modelout = model(x, trees, "filenames", alpha=0.6, ifmask=ifmask, maskweight=configs.maskweight)
 
     # load_epoch =10
     # saver = tfe.Saver(model.all_trainable_variables)
@@ -180,14 +180,14 @@ def train(model, train_loader, test_loader, gen_loader, configs):
     # print("Weights restored for {} from epoch {}".format(len(model.all_trainable_variables),load_epoch))
 
     # model.cuda()
-    # model.load_weights(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
-    # st()
+    model.load_weights(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
+    st()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
 
     minloss = 1000
     for epoch_num in range(load_epoch, configs.epochs + 1):
         timestamp_start = datetime.datetime.now(pytz.timezone('America/New_York'))
-        trainer.train_epoch(epoch_num, timestamp_start)
+        # trainer.train_epoch(epoch_num, timestamp_start)
 
         if epoch_num % configs.save_interval == 0 and epoch_num > 0:
             model.save_weights(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(epoch_num)))
