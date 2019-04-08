@@ -181,7 +181,7 @@ def train(model, train_loader, test_loader, gen_loader, configs):
 
     # model.cuda()
     model.load_weights(osp.join(configs.exp_dir, 'checkpoints_eager', 'model_epoch_{0}'.format(load_epoch)))
-    st()
+    # st()
     trainer = PNPNetTrainer(model=model,optimizer=optimizer, train_loader=train_loader, val_loader=test_loader, gen_loader=gen_loader,configs=configs)
 
     minloss = 1000
@@ -196,6 +196,8 @@ def train(model, train_loader, test_loader, gen_loader, configs):
         #     minloss = trainer.validate(epoch_num, timestamp_start, minloss)
         if epoch_num % configs.sample_interval == 0 and epoch_num > 0:
             trainer.sample(epoch_num, sample_num=4, timestamp_start=timestamp_start)
+        
+        trainer.train_epoch(epoch_num, timestamp_start)
         # if epoch_num % configs.save_interval == 0 and epoch_num > 0:
         #     torch.save(model.state_dict(),
         #                osp.join(configs.exp_dir, 'checkpoints', 'model_epoch_{0}.pth'.format(epoch_num)))
