@@ -20,6 +20,13 @@ The default training can be started by:
 python mains/pnpnet_main.py 
 ```
 
+
+<div align='center'>
+  <img src='images/pipeline.png' width='512px'>
+</div>
+
+
+
 ## Coming Soon
 
 - **Testing Code**
