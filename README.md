@@ -8,3 +8,14 @@ This is the tf2.0 ported version implementation from [Pytorch code base](https:/
 
 
 [Poster](http://www.sfu.ca/~zhiweid/papers/PNP_Net_Poster.pdf)
+
+
+
+
+## Training
+
+The default training can be started by: 
+
+```bash
+python mains/pnpnet_main.py 
+```
