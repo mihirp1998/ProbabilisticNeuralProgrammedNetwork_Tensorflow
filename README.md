@@ -22,6 +22,14 @@ python mains/pnpnet_main.py
 
 ## Coming Soon
 
-Testing Code
-Pretrained Model
-Result Summary
+- **Testing Code**
+
+
+- **Better Documentation**
+
+
+- **Pretrained Model**
+
+
+- **Results Summary **
+
