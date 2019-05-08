@@ -11,6 +11,11 @@ This is the tf2.0 implementation from [Pytorch code base](https://github.com/Luc
 
 
 
+<div align='center'>
+  <img src='images/pipeline.png' width='512px'>
+</div>
+
+
 
 ## Training
 
@@ -20,10 +25,6 @@ The default training can be started by:
 python mains/pnpnet_main.py 
 ```
 
-
-<div align='center'>
-  <img src='images/pipeline.png' width='512px'>
-</div>
 
 
 
