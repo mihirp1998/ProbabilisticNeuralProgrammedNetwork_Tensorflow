@@ -1,4 +1,4 @@
-# Probabilistic Neural Programmed Network
+# Probabilistic Neural Programmed Network Tensorflow
 
 This is the tf2.0 ported version implementation from [Pytorch code base](https://github.com/Lucas2012/ProbabilisticNeuralProgrammedNetwork/edit/master/README.md) for paper: 
 
