@@ -31,5 +31,5 @@ python mains/pnpnet_main.py
 - **Pretrained Model**
 
 
-- **Results Summary **
+- **Results Summary**
 
