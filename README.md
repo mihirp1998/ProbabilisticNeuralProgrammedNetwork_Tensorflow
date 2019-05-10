@@ -1,6 +1,6 @@
 # Probabilistic Neural Programmed Network Tensorflow
 
-This is the tf2.0 implementation from [Pytorch code base](https://github.com/Lucas2012/ProbabilisticNeuralProgrammedNetwork/edit/master/README.md) for paper: 
+This is the tf2.0 implementation from [Pytorch code base](https://github.com/Lucas2012/ProbabilisticNeuralProgrammedNetwork) for paper: 
 
 [Probabilistic Neural Programmed Networks for Scene Generation](http://www2.cs.sfu.ca/~mori/research/papers/deng-nips18.pdf)
 
